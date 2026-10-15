@@ -38,7 +38,7 @@ export default async function BookingPage(props: { searchParams: Promise<{ month
   const businessName = globalConfig.contact_business_name || globalConfig.tenant_name || 'Our Company';
   const blockedDatesSet = new Set(blockedDatesResult.map(r => r.date));
   
-  const bookedCountsMap = bookedCountsResult.reduce((acc, row) => {
+  const bookedCountsMap = bookedCountsResult.reduce((acc: Record<string, number>, row: any) => {
     acc[row.date] = Number(row.taken_slots);
     return acc;
   }, {} as Record<string, number>);

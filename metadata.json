@@ -1,0 +1,8 @@
+{
+  "name": "Macrotek Live Server",
+  "description": "Storefront and CMS control panel with appointment bookings, class enrollments, and services catalog.",
+  "prompt": "gwaps04/macrotek-official-live-server",
+  "capabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

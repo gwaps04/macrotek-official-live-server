@@ -61,7 +61,7 @@ export default async function ClassRosterDashboard(props: { params: Promise<{ sc
   const displayDate = dateObj.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', timeZone: 'UTC' });
   const formatTime = (time24: string) => {
     const [h, m] = time24.split(':');
-    let hour = parseInt(h, 10);
+    const hour = parseInt(h, 10);
     const ampm = hour >= 12 ? 'PM' : 'AM';
     return `${hour % 12 || 12}:${m} ${ampm}`;
   };

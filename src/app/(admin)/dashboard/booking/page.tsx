@@ -231,7 +231,7 @@ export default async function DashboardBooking() {
                       const displayDate = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' });
                       
                       const [h, m] = appt.appointment_time.split(':');
-                      let hour = parseInt(h, 10);
+                      const hour = parseInt(h, 10);
                       const ampm = hour >= 12 ? 'PM' : 'AM';
                       const displayTime = `${hour % 12 || 12}:${m} ${ampm}`;
 
