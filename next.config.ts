@@ -1,8 +1,6 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Only use standalone output outside Vercel (avoids Next 16 onBuildComplete next-server.js.nft.json error on Vercel)
-  ...(process.env.VERCEL ? {} : { output: 'standalone' }),
   images: {
     remotePatterns: [
       {
