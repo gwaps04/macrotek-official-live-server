@@ -20,6 +20,7 @@ interface MockStore {
   appointments: Record<string, any>[];
   booking_blocked_dates: Record<string, any>[];
   admin_users: Record<string, any>[];
+  contracts: Record<string, any>[];
 }
 
 function createInitialStore(): MockStore {
@@ -435,7 +436,8 @@ function createInitialStore(): MockStore {
         last_login: null,
         created_at: new Date('2026-01-01').toISOString()
       }
-    ]
+    ],
+    contracts: []
   };
 }
 
@@ -982,6 +984,64 @@ function processMockQuery(strings: TemplateStringsArray | string | string[], val
       return mockStore.appointments.slice().sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
     }
     return mockStore.appointments.filter(a => a.status !== 'Cancelled');
+  }
+
+  // 18. Contracts & Service Agreements
+  if (/FROM contracts/i.test(normalized)) {
+    if (/^INSERT INTO contracts/i.test(normalized)) {
+      const item = {
+        id: crypto.randomUUID(),
+        lead_id: values[0],
+        lead_type: values[1] || 'appointment',
+        client_name: values[2] || '',
+        company_name: values[3] || '',
+        client_address: values[4] || '',
+        client_email: values[5] || '',
+        client_phone: values[6] || '',
+        project_cost: Number(values[7]) || 1500,
+        currency: values[8] || 'USD',
+        scope_description: values[9] || '',
+        status: values[10] || 'Draft',
+        signature_data: values[11] || null,
+        signature_type: values[12] || 'drawn',
+        signed_at: values[13] || null,
+        signed_by_name: values[14] || null,
+        signed_by_title: values[15] || null,
+        signed_ip: values[16] || null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+      mockStore.contracts.push(item);
+      return [item];
+    }
+    if (/^UPDATE contracts SET/i.test(normalized)) {
+      const targetId = values[values.length - 1];
+      const c = mockStore.contracts.find(x => x.id === targetId || x.lead_id === targetId);
+      if (c) {
+        c.updated_at = new Date().toISOString();
+        if (/status\s*=\s*/i.test(normalized)) c.status = values[0] || c.status;
+        if (/signature_data\s*=\s*/i.test(normalized)) {
+          c.signature_data = values[0];
+          c.signature_type = values[1] || 'drawn';
+          c.signed_at = values[2] || new Date().toISOString();
+          c.signed_by_name = values[3] || c.client_name;
+          c.signed_by_title = values[4] || 'Client';
+          c.status = 'Signed';
+        }
+        if (/project_cost\s*=\s*/i.test(normalized)) c.project_cost = Number(values[0]) || c.project_cost;
+        if (/company_name\s*=\s*/i.test(normalized)) c.company_name = values[0] || c.company_name;
+      }
+      return c ? [c] : [];
+    }
+    if (/WHERE lead_id =/i.test(normalized)) {
+      const leadId = values[0];
+      return mockStore.contracts.filter(c => c.lead_id === leadId);
+    }
+    if (/WHERE id =/i.test(normalized)) {
+      const id = values[0];
+      return mockStore.contracts.filter(c => c.id === id);
+    }
+    return mockStore.contracts.slice().sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
   }
 
   // Default fallback for any unhandled query

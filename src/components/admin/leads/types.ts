@@ -25,3 +25,5 @@ export interface UnifiedLead {
 
 export type FilterType = 'all' | 'appointment' | 'enrollment';
 export type StatusFilter = 'all' | 'Pending' | 'Confirmed' | 'Registered' | 'Completed' | 'Cancelled';
+export type DatePreset = 'all' | 'today' | 'yesterday' | 'last7' | 'last30' | 'upcoming' | 'custom';
+export type DateTarget = 'scheduled' | 'created';

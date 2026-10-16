@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useTransition } from 'react';
+import Link from 'next/link';
 import * as Icons from 'lucide-react';
 import { UnifiedLead } from './types';
 import { LeadTypeBadge, LeadStatusBadge } from './LeadStatusBadge';
@@ -55,6 +56,24 @@ export default function LeadDetailModal({ lead, onClose, onRefresh }: LeadDetail
 
     navigator.clipboard.writeText(text);
     setCopyFeedback('Copied CRM / ClickUp dossier to clipboard!');
+    setTimeout(() => setCopyFeedback(null), 3000);
+  };
+
+  const contractPath = `/contract/${lead.id}?type=${lead.type}`;
+  const contractUrl = typeof window !== 'undefined' 
+    ? `${window.location.origin}${contractPath}` 
+    : contractPath;
+
+  const handleCopyContractLink = () => {
+    navigator.clipboard.writeText(contractUrl);
+    setCopyFeedback('Copied contract & e-sign link to clipboard!');
+    setTimeout(() => setCopyFeedback(null), 3000);
+  };
+
+  const handleCopyInviteMessage = () => {
+    const msg = `Hi ${lead.firstName}, please review and electronically sign our Standard Service Agreement with Macrotek Digital Solutions here: ${contractUrl}`;
+    navigator.clipboard.writeText(msg);
+    setCopyFeedback('Copied client invite message to clipboard!');
     setTimeout(() => setCopyFeedback(null), 3000);
   };
 
@@ -133,6 +152,21 @@ export default function LeadDetailModal({ lead, onClose, onRefresh }: LeadDetail
           
           {/* Quick Contact & Action Buttons */}
           <div className="flex flex-wrap gap-2">
+            <Link
+              href={contractPath}
+              target="_blank"
+              className="inline-flex items-center gap-2 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-colors shadow-xs"
+            >
+              <Icons.FileCheck size={14} />
+              Contract &amp; e-Sign
+            </Link>
+            <button
+              onClick={handleCopyContractLink}
+              className="inline-flex items-center gap-2 px-3.5 py-2 bg-zinc-100 hover:bg-zinc-200 text-zinc-800 rounded-xl text-xs font-semibold transition-colors"
+            >
+              <Icons.Share2 size={14} className="text-zinc-600" />
+              Copy Contract Link
+            </button>
             <a 
               href={`mailto:${lead.email}`}
               className="inline-flex items-center gap-2 px-3.5 py-2 bg-zinc-100 hover:bg-zinc-200 text-zinc-800 rounded-xl text-xs font-semibold transition-colors"
@@ -259,6 +293,51 @@ export default function LeadDetailModal({ lead, onClose, onRefresh }: LeadDetail
               </div>
             </div>
           )}
+
+          {/* Standard Service Agreement Card */}
+          <div className="p-4 bg-gradient-to-br from-zinc-900 to-zinc-950 text-white rounded-2xl border border-zinc-800 space-y-3.5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+                  <Icons.FileText size={16} />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-white uppercase tracking-wider">
+                    Standard Service Agreement
+                  </h4>
+                  <p className="text-[11px] text-zinc-400">
+                    Online e-sign contract with client information pre-filled.
+                  </p>
+                </div>
+              </div>
+
+              <Link
+                href={contractPath}
+                target="_blank"
+                className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-zinc-950 font-bold text-xs rounded-lg transition-colors flex items-center gap-1.5 shrink-0"
+              >
+                <span>Open Contract</span>
+                <Icons.ExternalLink size={12} />
+              </Link>
+            </div>
+
+            {/* Ready-to-Send Client Message */}
+            <div className="bg-zinc-800/80 p-3 rounded-xl border border-zinc-700/80 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-zinc-300">Shareable Invite Message:</span>
+                <button
+                  onClick={handleCopyInviteMessage}
+                  className="text-[11px] text-emerald-400 hover:text-emerald-300 font-semibold flex items-center gap-1 transition-colors"
+                >
+                  <Icons.Copy size={12} />
+                  Copy Message
+                </button>
+              </div>
+              <p className="text-xs text-zinc-300 font-mono bg-zinc-900/90 p-2.5 rounded-lg border border-zinc-800 select-all leading-relaxed">
+                Hi {lead.firstName}, please review and electronically sign our Standard Service Agreement with Macrotek Digital Solutions here: {contractUrl}
+              </p>
+            </div>
+          </div>
 
           {/* Status & Pipeline Control */}
           <div className="p-4 bg-zinc-900 text-white rounded-2xl space-y-3">

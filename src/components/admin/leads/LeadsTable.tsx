@@ -1,6 +1,7 @@
 "use client";
 
 import React from 'react';
+import Link from 'next/link';
 import * as Icons from 'lucide-react';
 import { UnifiedLead } from './types';
 import { LeadTypeBadge, LeadStatusBadge } from './LeadStatusBadge';
@@ -112,16 +113,28 @@ export default function LeadsTable({ leads, onSelectLead }: LeadsTableProps) {
 
                   {/* Action button */}
                   <td className="px-5 py-4 text-right whitespace-nowrap">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onSelectLead(lead);
-                      }}
-                      className="px-3 py-1.5 bg-zinc-100 hover:bg-zinc-200 text-zinc-800 rounded-lg text-xs font-bold transition-colors inline-flex items-center gap-1.5"
-                    >
-                      <span>Dossier</span>
-                      <Icons.ChevronRight size={13} className="text-zinc-500" />
-                    </button>
+                    <div className="flex items-center justify-end gap-1.5">
+                      <Link
+                        href={`/contract/${lead.id}?type=${lead.type}`}
+                        target="_blank"
+                        onClick={(e) => e.stopPropagation()}
+                        className="px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200/80 rounded-lg text-xs font-bold transition-colors inline-flex items-center gap-1"
+                        title="Open Service Agreement Contract & e-Sign"
+                      >
+                        <Icons.FileCheck size={13} />
+                        <span>Contract</span>
+                      </Link>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onSelectLead(lead);
+                        }}
+                        className="px-3 py-1.5 bg-zinc-100 hover:bg-zinc-200 text-zinc-800 rounded-lg text-xs font-bold transition-colors inline-flex items-center gap-1.5"
+                      >
+                        <span>Dossier</span>
+                        <Icons.ChevronRight size={13} className="text-zinc-500" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               );

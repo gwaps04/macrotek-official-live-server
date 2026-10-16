@@ -385,3 +385,31 @@ ON CONFLICT (slug) DO NOTHING;
 INSERT INTO admin_users (email, password_hash)
 VALUES ('admin@macrotek.com', crypt('admin123#', gen_salt('bf', 10)))
 ON CONFLICT (email) DO NOTHING;
+
+-- =====================================================================================
+-- 7. SERVICE AGREEMENTS & E-SIGNATURE ENGINE
+-- =====================================================================================
+CREATE TABLE IF NOT EXISTS contracts (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  lead_id TEXT NOT NULL,
+  lead_type TEXT NOT NULL DEFAULT 'appointment',
+  client_name TEXT NOT NULL,
+  company_name TEXT,
+  client_address TEXT,
+  client_email TEXT NOT NULL,
+  client_phone TEXT,
+  project_cost NUMERIC DEFAULT 1500.00,
+  currency TEXT DEFAULT 'USD',
+  scope_description TEXT,
+  status TEXT DEFAULT 'Draft',
+  signature_data TEXT,
+  signature_type TEXT DEFAULT 'drawn',
+  signed_at TIMESTAMP WITH TIME ZONE,
+  signed_by_name TEXT,
+  signed_by_title TEXT,
+  signed_ip TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_contracts_lead_id ON contracts(lead_id);
