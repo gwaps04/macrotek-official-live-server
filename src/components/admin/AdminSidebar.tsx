@@ -1,9 +1,9 @@
 "use client";
 
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import * as Icons from 'lucide-react';
-import { useState } from 'react';
 
 // WOZ FIX: Import the Logout Button
 import LogoutButton from './LogoutButton';
@@ -52,23 +52,23 @@ export default function AdminSidebar({ enableAppointments, enableEnrollments }: 
     }
   ];
 
-  const revenueItems: NavItem[] = [];
+  const inboundAndRevenueItems: NavItem[] = [
+    { name: 'Leads Command Center', href: '/dashboard/leads', icon: Icons.Inbox, isHighlight: true }
+  ];
   
   if (enableAppointments) {
-    revenueItems.push({ name: 'Appointment Calendar', href: '/dashboard/booking', icon: Icons.CalendarCheck, isHighlight: true });
+    inboundAndRevenueItems.push({ name: 'Appointment Calendar', href: '/dashboard/booking', icon: Icons.CalendarCheck, isHighlight: false });
   }
   
   if (enableEnrollments) {
-    revenueItems.push({ name: 'Class Curriculum', href: '/dashboard/classes', icon: Icons.GraduationCap, isHighlight: false });
-    revenueItems.push({ name: 'Class Calendar', href: '/dashboard/class-schedule', icon: Icons.CalendarDays, isHighlight: true });
+    inboundAndRevenueItems.push({ name: 'Class Curriculum', href: '/dashboard/classes', icon: Icons.GraduationCap, isHighlight: false });
+    inboundAndRevenueItems.push({ name: 'Class Calendar', href: '/dashboard/class-schedule', icon: Icons.CalendarDays, isHighlight: true });
   }
 
-  if (revenueItems.length > 0) {
-    NAV_GROUPS.push({
-      label: 'Revenue Engines',
-      items: revenueItems
-    });
-  }
+  NAV_GROUPS.push({
+    label: 'Inbound & Revenue',
+    items: inboundAndRevenueItems
+  });
 
   NAV_GROUPS.push({
     label: 'Settings & Scale',
@@ -79,7 +79,7 @@ export default function AdminSidebar({ enableAppointments, enableEnrollments }: 
   });
 
   return (
-    <>
+    <React.Fragment>
       <div className="lg:hidden flex items-center justify-between bg-zinc-950 text-white p-4 border-b border-zinc-800 flex-shrink-0">
         <div className="flex items-center gap-2 font-display font-bold tracking-widest uppercase text-sm">
           <Icons.ShieldCheck className="text-emerald-500" size={18} /> Admin
@@ -159,6 +159,6 @@ export default function AdminSidebar({ enableAppointments, enableEnrollments }: 
           <LogoutButton />
         </div>
       </aside>
-    </>
+    </React.Fragment>
   );
 }

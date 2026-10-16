@@ -377,8 +377,55 @@ function createInitialStore(): MockStore {
         created_at: new Date('2026-01-01').toISOString()
       }
     ],
-    class_enrollments: [],
-    appointments: [],
+    class_enrollments: [
+      {
+        id: 'ce1',
+        schedule_id: 'cs1',
+        student_first_name: 'Sarah',
+        student_last_name: 'Jenkins',
+        student_email: 'sarah.j@enterprise.io',
+        student_phone: '+63 917 888 1234',
+        student_address: 'Bonifacio Global City, Taguig, Philippines',
+        status: 'Registered',
+        payment_status: 'Paid',
+        created_at: new Date(Date.now() - 3600000 * 4).toISOString()
+      }
+    ],
+    appointments: [
+      {
+        id: 'ap1',
+        appointment_date: '2026-10-18',
+        appointment_time: '09:00:00',
+        client_first_name: 'Jason',
+        client_last_name: 'Millena',
+        client_email: 'ssjasonmillena@gmail.com',
+        client_phone: '+63 9563355850',
+        client_address: 'Legazpi City, Albay, Philippines',
+        client_notes: 'Discussion regarding enterprise cloud migration, ERP integrations, and workflow automation.',
+        prequalification_answers: {
+          'Operational Bottleneck': 'Repetitive manual tasks and endless paperwork.',
+          'Core Business Goal': 'Building a central dashboard (ERP) to view all my business metrics in one place.'
+        },
+        status: 'Pending',
+        created_at: new Date(Date.now() - 3600000 * 2).toISOString()
+      },
+      {
+        id: 'ap2',
+        appointment_date: '2026-10-20',
+        appointment_time: '14:00:00',
+        client_first_name: 'David',
+        client_last_name: 'Vance',
+        client_email: 'david.vance@techcorp.io',
+        client_phone: '+63 920 555 4321',
+        client_address: 'Makati Central Business District, Philippines',
+        client_notes: 'Seeking technical audit for high-volume API endpoints and serverless infrastructure.',
+        prequalification_answers: {
+          'Timeline for execution': 'Immediate - within 2 weeks'
+        },
+        status: 'Confirmed',
+        created_at: new Date(Date.now() - 3600000 * 18).toISOString()
+      }
+    ],
     booking_blocked_dates: [],
     admin_users: [
       {
@@ -814,11 +861,17 @@ function processMockQuery(strings: TemplateStringsArray | string | string[], val
       mockStore.class_enrollments.push(item);
       return [item];
     }
-    if (/^UPDATE class_enrollments SET payment_status/i.test(normalized)) {
-      const status = /Paid/i.test(normalized) ? 'Paid' : 'Pending';
-      const id = values[0];
+    if (/^UPDATE class_enrollments SET/i.test(normalized)) {
+      const id = values[values.length - 1];
       const en = mockStore.class_enrollments.find(e => e.id === id);
-      if (en) en.payment_status = status;
+      if (en) {
+        if (/payment_status\s*=\s*/i.test(normalized)) {
+          en.payment_status = values[0] || (normalized.includes("'Paid'") ? 'Paid' : 'Pending');
+        }
+        if (/status\s*=\s*/i.test(normalized)) {
+          en.status = values[0] || en.status;
+        }
+      }
       return [];
     }
     if (/^DELETE FROM class_enrollments/i.test(normalized)) {
@@ -826,11 +879,25 @@ function processMockQuery(strings: TemplateStringsArray | string | string[], val
       mockStore.class_enrollments = mockStore.class_enrollments.filter(e => e.id !== id);
       return [];
     }
-    if (/WHERE schedule_id =/i.test(normalized)) {
+    if (/WHERE ce\.schedule_id =|WHERE schedule_id =/i.test(normalized)) {
       const schedId = values[0];
       return mockStore.class_enrollments.filter(e => e.schedule_id === schedId);
     }
-    return mockStore.class_enrollments;
+    
+    // Default enrich with schedule and class details
+    return mockStore.class_enrollments.map((e: any) => {
+      const sched = mockStore.class_schedules.find((s: any) => s.id === e.schedule_id) || {};
+      const cls = mockStore.classes.find((c: any) => c.id === sched.class_id) || {};
+      return {
+        ...e,
+        schedule_date: sched.schedule_date || '',
+        start_time: sched.start_time || '',
+        end_time: sched.end_time || '',
+        class_title: cls.title || 'Masterclass',
+        class_price: cls.price || 0,
+        instructor_name: cls.instructor_name || 'Lead Instructor'
+      };
+    }).sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
   }
 
   // 16. Blocked Dates
@@ -870,7 +937,7 @@ function processMockQuery(strings: TemplateStringsArray | string | string[], val
         client_phone: values[5],
         client_address: values[6],
         client_notes: values[7],
-        prequalification_answers: values[8] ? JSON.parse(values[8]) : {},
+        prequalification_answers: values[8] ? (typeof values[8] === 'string' ? JSON.parse(values[8]) : values[8]) : {},
         status: 'Pending',
         created_at: new Date().toISOString()
       };
@@ -882,6 +949,11 @@ function processMockQuery(strings: TemplateStringsArray | string | string[], val
       const id = values[1];
       const appt = mockStore.appointments.find(a => a.id === id);
       if (appt) appt.status = status;
+      return [];
+    }
+    if (/^DELETE FROM appointments/i.test(normalized)) {
+      const id = values[0];
+      mockStore.appointments = mockStore.appointments.filter(a => a.id !== id);
       return [];
     }
     if (/COUNT\(\*\) as taken_slots/i.test(normalized)) {
@@ -905,6 +977,9 @@ function processMockQuery(strings: TemplateStringsArray | string | string[], val
       return mockStore.appointments.filter(
         a => (a.client_email === email || a.client_phone === phone) && a.status !== 'Cancelled'
       );
+    }
+    if (/ORDER BY created_at/i.test(normalized) || /status/i.test(normalized)) {
+      return mockStore.appointments.slice().sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
     }
     return mockStore.appointments.filter(a => a.status !== 'Cancelled');
   }
