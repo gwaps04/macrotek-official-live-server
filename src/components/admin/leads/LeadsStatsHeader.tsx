@@ -12,46 +12,46 @@ interface LeadsStatsHeaderProps {
 
 export default function LeadsStatsHeader({ leads }: LeadsStatsHeaderProps) {
   const totalLeads = leads.length;
+  const signedContracts = leads.filter(l => l.contractStatus === 'Signed').length;
   const appointmentCount = leads.filter(l => l.type === 'appointment').length;
   const enrollmentCount = leads.filter(l => l.type === 'enrollment').length;
-  const pendingCount = leads.filter(l => l.status === 'Pending' || l.paymentStatus === 'Pending').length;
 
   const STATS = [
     {
       label: 'Total Inbound Leads',
       value: totalLeads,
-      subtext: 'Combined inquiries & enrollments',
+      subtext: 'Appointments & enrollments',
       icon: Icons.Users,
       color: 'text-zinc-900',
       bgColor: 'bg-zinc-100',
       borderColor: 'border-zinc-200'
     },
     {
-      label: 'Consultation Bookings',
-      value: appointmentCount,
-      subtext: '1-on-1 scheduled appointments',
-      icon: Icons.CalendarCheck,
+      label: 'Signed Agreements',
+      value: signedContracts,
+      subtext: 'Executed contracts on file',
+      icon: Icons.FileCheck2,
       color: 'text-emerald-700',
       bgColor: 'bg-emerald-50',
       borderColor: 'border-emerald-200'
     },
     {
+      label: 'Consultation Bookings',
+      value: appointmentCount,
+      subtext: '1-on-1 discovery calls',
+      icon: Icons.CalendarCheck,
+      color: 'text-blue-700',
+      bgColor: 'bg-blue-50',
+      borderColor: 'border-blue-200'
+    },
+    {
       label: 'Class Enrollments',
       value: enrollmentCount,
-      subtext: 'Workshop & masterclass students',
+      subtext: 'Enrolled students & cohorts',
       icon: Icons.GraduationCap,
       color: 'text-indigo-700',
       bgColor: 'bg-indigo-50',
       borderColor: 'border-indigo-200'
-    },
-    {
-      label: 'Action Required',
-      value: pendingCount,
-      subtext: 'Pending status or payment',
-      icon: Icons.Clock,
-      color: 'text-amber-700',
-      bgColor: 'bg-amber-50',
-      borderColor: 'border-amber-200'
     }
   ];
 

@@ -437,7 +437,36 @@ function createInitialStore(): MockStore {
         created_at: new Date('2026-01-01').toISOString()
       }
     ],
-    contracts: []
+    contracts: [
+      {
+        id: 'ct-ap1',
+        lead_id: 'ap1',
+        lead_type: 'appointment',
+        client_name: 'Jason Millena',
+        company_name: 'Macrotek Enterprise Client',
+        client_address: 'Legazpi City, Albay, Philippines',
+        client_email: 'ssjasonmillena@gmail.com',
+        client_phone: '+63 9563355850',
+        project_cost: 50000,
+        downpayment_percentage: 50,
+        currency: 'PHP',
+        access_code: '849201',
+        scope_description: 'Custom Enterprise ERP Architecture, Lead Command Center & Workflow Automation Integration.',
+        status: 'Draft',
+        signature_data: null,
+        signature_type: 'drawn',
+        signed_at: null,
+        signed_by_name: null,
+        signed_by_title: null,
+        signed_ip: null,
+        attachment_url: null,
+        attachment_name: null,
+        attachment_type: null,
+        signing_method: 'electronic',
+        created_at: new Date(Date.now() - 3600000 * 2).toISOString(),
+        updated_at: new Date(Date.now() - 3600000 * 2).toISOString()
+      }
+    ]
   };
 }
 
@@ -989,6 +1018,7 @@ function processMockQuery(strings: TemplateStringsArray | string | string[], val
   // 18. Contracts & Service Agreements
   if (/FROM contracts/i.test(normalized)) {
     if (/^INSERT INTO contracts/i.test(normalized)) {
+      const generatedCode = String(Math.floor(100000 + Math.random() * 900000));
       const item = {
         id: crypto.randomUUID(),
         lead_id: values[0],
@@ -999,15 +1029,21 @@ function processMockQuery(strings: TemplateStringsArray | string | string[], val
         client_email: values[5] || '',
         client_phone: values[6] || '',
         project_cost: Number(values[7]) || 1500,
-        currency: values[8] || 'USD',
-        scope_description: values[9] || '',
-        status: values[10] || 'Draft',
-        signature_data: values[11] || null,
-        signature_type: values[12] || 'drawn',
-        signed_at: values[13] || null,
-        signed_by_name: values[14] || null,
-        signed_by_title: values[15] || null,
-        signed_ip: values[16] || null,
+        downpayment_percentage: Number(values[8]) || 50,
+        currency: values[9] || 'PHP',
+        access_code: values[10] || generatedCode,
+        scope_description: values[11] || '',
+        status: values[12] || 'Draft',
+        signature_data: values[13] || null,
+        signature_type: values[14] || 'drawn',
+        signed_at: values[15] || null,
+        signed_by_name: values[16] || null,
+        signed_by_title: values[17] || null,
+        signed_ip: values[18] || null,
+        attachment_url: values[19] || null,
+        attachment_name: values[20] || null,
+        attachment_type: values[21] || null,
+        signing_method: values[22] || 'electronic',
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       };
@@ -1019,7 +1055,14 @@ function processMockQuery(strings: TemplateStringsArray | string | string[], val
       const c = mockStore.contracts.find(x => x.id === targetId || x.lead_id === targetId);
       if (c) {
         c.updated_at = new Date().toISOString();
-        if (/status\s*=\s*/i.test(normalized)) c.status = values[0] || c.status;
+        if (/status\s*=\s*/i.test(normalized)) {
+          const statusMatch = normalized.match(/status\s*=\s*['"]?([^'",\s]+)/i);
+          if (statusMatch && statusMatch[1]) {
+            c.status = statusMatch[1];
+          } else if (values.length > 0) {
+            c.status = values[0] || c.status;
+          }
+        }
         if (/signature_data\s*=\s*/i.test(normalized)) {
           c.signature_data = values[0];
           c.signature_type = values[1] || 'drawn';
@@ -1027,15 +1070,50 @@ function processMockQuery(strings: TemplateStringsArray | string | string[], val
           c.signed_by_name = values[3] || c.client_name;
           c.signed_by_title = values[4] || 'Client';
           c.status = 'Signed';
+          c.signing_method = 'electronic';
         }
-        if (/project_cost\s*=\s*/i.test(normalized)) c.project_cost = Number(values[0]) || c.project_cost;
-        if (/company_name\s*=\s*/i.test(normalized)) c.company_name = values[0] || c.company_name;
+        if (/attachment_url\s*=\s*/i.test(normalized)) {
+          c.attachment_url = values[0];
+          c.attachment_name = values[1] || 'signed-contract.pdf';
+          c.attachment_type = values[2] || 'pdf';
+          c.status = 'Signed';
+          c.signing_method = 'manual_hardcopy';
+          c.signed_at = new Date().toISOString();
+        }
+        if (/project_cost\s*=\s*/i.test(normalized)) {
+          c.project_cost = Number(values[0]) || c.project_cost;
+        }
+        if (/downpayment_percentage\s*=\s*/i.test(normalized)) {
+          c.downpayment_percentage = Number(values[0]) || c.downpayment_percentage;
+        }
+        if (/currency\s*=\s*/i.test(normalized)) {
+          c.currency = values[0] || c.currency;
+        }
+        if (/access_code\s*=\s*/i.test(normalized)) {
+          c.access_code = values[0] || c.access_code;
+        }
+        if (/company_name\s*=\s*/i.test(normalized)) {
+          c.company_name = values[0] || c.company_name;
+        }
+        if (/client_address\s*=\s*/i.test(normalized)) {
+          c.client_address = values[0] || c.client_address;
+        }
       }
       return c ? [c] : [];
     }
     if (/WHERE lead_id =/i.test(normalized)) {
       const leadId = values[0];
-      return mockStore.contracts.filter(c => c.lead_id === leadId);
+      const list = mockStore.contracts.filter(c => c.lead_id === leadId);
+      list.forEach(c => {
+        if (!c.access_code) c.access_code = String(Math.floor(100000 + Math.random() * 900000));
+        if (c.downpayment_percentage === undefined) c.downpayment_percentage = 50;
+        if (!c.currency) c.currency = 'PHP';
+      });
+      return list;
+    }
+    if (/WHERE access_code =/i.test(normalized)) {
+      const code = values[0];
+      return mockStore.contracts.filter(c => String(c.access_code).trim().toLowerCase() === String(code).trim().toLowerCase());
     }
     if (/WHERE id =/i.test(normalized)) {
       const id = values[0];

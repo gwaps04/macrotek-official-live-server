@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState, useTransition } from 'react';
+import React, { useState, useEffect, useTransition } from 'react';
 import * as Icons from 'lucide-react';
-import { ContractData, signContractAction } from '@/app/contract/contract.actions';
+import { ContractData, signContractAction, verifyContractAccessCodeAction } from '@/app/contract/contract.actions';
 import ContractDocument from './ContractDocument';
 import SignaturePad from './SignaturePad';
 
@@ -14,6 +14,14 @@ interface ContractPageViewProps {
 
 export default function ContractPageView({ initialContract }: ContractPageViewProps) {
   const [contract, setContract] = useState<ContractData>(initialContract);
+  
+  // Access Code Gate State
+  const [isUnlocked, setIsUnlocked] = useState(false);
+  const [accessCodeInput, setAccessCodeInput] = useState('');
+  const [accessCodeError, setAccessCodeError] = useState<string | null>(null);
+  const [isVerifyingCode, setIsVerifyingCode] = useState(false);
+
+  // E-Sign Form State
   const [signatureData, setSignatureData] = useState<string>('');
   const [signatureType, setSignatureType] = useState<'drawn' | 'typed'>('drawn');
   const [signerName, setSignerName] = useState<string>(initialContract.client_name || '');
@@ -24,6 +32,53 @@ export default function ContractPageView({ initialContract }: ContractPageViewPr
   const [isPending, startTransition] = useTransition();
 
   const isSigned = contract.status === 'Signed';
+
+  // Check if access code is saved in sessionStorage or matches URL query
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const storageKey = `contract_unlocked_${contract.id}`;
+      const savedCode = sessionStorage.getItem(storageKey);
+      
+      const searchParams = new URLSearchParams(window.location.search);
+      const urlCode = searchParams.get('code');
+
+      if (urlCode && contract.access_code && urlCode.trim().toLowerCase() === contract.access_code.trim().toLowerCase()) {
+        setIsUnlocked(true);
+        sessionStorage.setItem(storageKey, urlCode.trim());
+      } else if (savedCode && contract.access_code && savedCode.trim().toLowerCase() === contract.access_code.trim().toLowerCase()) {
+        setIsUnlocked(true);
+      }
+    }
+  }, [contract.id, contract.access_code]);
+
+  const handleUnlockWithCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAccessCodeError(null);
+
+    const entered = accessCodeInput.trim();
+    if (!entered) {
+      setAccessCodeError('Please enter your 6-digit Access Code.');
+      return;
+    }
+
+    setIsVerifyingCode(true);
+
+    try {
+      const res = await verifyContractAccessCodeAction(contract.lead_id, entered);
+      if (res.valid) {
+        setIsUnlocked(true);
+        if (typeof window !== 'undefined') {
+          sessionStorage.setItem(`contract_unlocked_${contract.id}`, entered);
+        }
+      } else {
+        setAccessCodeError('Invalid Access Code. Please check the code provided by Macrotek.');
+      }
+    } catch {
+      setAccessCodeError('Failed to verify access code. Please try again.');
+    } finally {
+      setIsVerifyingCode(false);
+    }
+  };
 
   const handlePrintDownload = () => {
     window.print();
@@ -62,13 +117,15 @@ export default function ContractPageView({ initialContract }: ContractPageViewPr
         signatureData,
         signatureType,
         signedByName: signerName.trim(),
-        signedByTitle: signerTitle.trim()
+        signedByTitle: signerTitle.trim(),
+        accessCode: contract.access_code
       });
 
       if (res.success) {
         setContract({
           ...contract,
           status: 'Signed',
+          signing_method: 'electronic',
           signature_data: signatureData,
           signature_type: signatureType,
           signed_at: new Date().toISOString(),
@@ -81,6 +138,103 @@ export default function ContractPageView({ initialContract }: ContractPageViewPr
     });
   };
 
+  // -------------------------------------------------------------
+  // ACCESS CODE GATE SCREEN (When Document is Locked)
+  // -------------------------------------------------------------
+  if (!isUnlocked) {
+    return (
+      <div className="min-h-screen bg-zinc-950 text-white flex items-center justify-center p-4 selection:bg-emerald-500 selection:text-white">
+        <div className="w-full max-w-md bg-zinc-900 border border-zinc-800 rounded-3xl p-6 sm:p-8 shadow-2xl relative overflow-hidden">
+          
+          {/* Subtle Ambient Glow */}
+          <div className="absolute top-0 right-0 -mt-10 -mr-10 w-40 h-40 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+          
+          <div className="flex flex-col items-center text-center">
+            
+            <div className="w-16 h-16 rounded-2xl bg-zinc-800 border border-zinc-700/80 text-emerald-400 flex items-center justify-center mb-5 shadow-inner">
+              <Icons.ShieldCheck size={32} />
+            </div>
+
+            <span className="text-[10px] font-black tracking-widest uppercase text-emerald-400 bg-emerald-950/60 border border-emerald-800/80 px-3 py-1 rounded-full mb-2">
+              Confidential Agreement
+            </span>
+
+            <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight">
+              Protected Document Access
+            </h1>
+
+            <p className="text-xs text-zinc-400 mt-2 leading-relaxed">
+              This Master Service Agreement for <strong className="text-zinc-200">{contract.client_name}</strong> is access-code protected. Enter your 6-digit access code to unlock and e-sign.
+            </p>
+
+            <form onSubmit={handleUnlockWithCode} className="w-full mt-6 space-y-4">
+              <div>
+                <label className="block text-[11px] font-bold text-zinc-400 uppercase tracking-wider mb-2 text-left">
+                  Enter 6-Digit Access Code
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={accessCodeInput}
+                    onChange={(e) => {
+                      setAccessCodeInput(e.target.value.toUpperCase());
+                      setAccessCodeError(null);
+                    }}
+                    placeholder="e.g. 849201"
+                    maxLength={10}
+                    autoFocus
+                    className="w-full px-4 py-3 bg-zinc-950 border border-zinc-700 focus:border-emerald-500 rounded-xl text-center text-xl font-mono font-bold tracking-widest text-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 transition-all placeholder:text-zinc-600 uppercase"
+                  />
+                  <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none text-zinc-500">
+                    <Icons.KeyRound size={16} />
+                  </div>
+                </div>
+              </div>
+
+              {accessCodeError && (
+                <div className="p-3 bg-red-950/50 border border-red-800 text-red-300 rounded-xl text-xs flex items-center gap-2 text-left animate-shake">
+                  <Icons.AlertCircle size={15} className="shrink-0 text-red-400" />
+                  <span>{accessCodeError}</span>
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={isVerifyingCode || !accessCodeInput.trim()}
+                className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold text-xs uppercase tracking-wider rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer"
+              >
+                {isVerifyingCode ? (
+                  <React.Fragment>
+                    <Icons.Loader2 size={16} className="animate-spin" />
+                    <span>Verifying Code...</span>
+                  </React.Fragment>
+                ) : (
+                  <React.Fragment>
+                    <Icons.LockOpen size={16} />
+                    <span>Unlock Contract Document</span>
+                  </React.Fragment>
+                )}
+              </button>
+            </form>
+
+            <div className="mt-6 pt-4 border-t border-zinc-800 text-center w-full">
+              <p className="text-[11px] text-zinc-500">
+                Macrotek Digital Solutions &bull; Authorized E-Signature System
+              </p>
+              <p className="text-[10px] text-zinc-600 mt-0.5">
+                Don&apos;t have your access code? Contact your representative at admin@macrotek.com
+              </p>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // -------------------------------------------------------------
+  // UNLOCKED CONTRACT VIEW & E-SIGNATURE INTERFACE
+  // -------------------------------------------------------------
   return (
     <div className="min-h-screen bg-zinc-100/90 text-zinc-900 pb-20 print:bg-white print:p-0">
       
@@ -95,7 +249,7 @@ export default function ContractPageView({ initialContract }: ContractPageViewPr
             <div>
               <div className="flex items-center gap-2">
                 <span className="font-bold text-sm text-zinc-950">
-                  Standard Service Agreement
+                  Master Service Agreement
                 </span>
                 {isSigned ? (
                   <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
@@ -164,14 +318,15 @@ export default function ContractPageView({ initialContract }: ContractPageViewPr
             </div>
             <button
               onClick={handlePrintDownload}
-              className="px-3.5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-xl shrink-0 transition-colors"
+              className="px-3.5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-xl shrink-0 transition-colors flex items-center gap-1.5"
             >
-              Print / Save PDF
+              <Icons.Printer size={13} />
+              <span>Print / Save PDF</span>
             </button>
           </div>
         )}
 
-        {/* The Formal Legal Contract Document */}
+        {/* The Read-Only Formal Legal Contract Document */}
         <ContractDocument contract={contract} />
 
         {/* E-Signature Execution Panel (Only shown if unsigned) */}
@@ -184,7 +339,7 @@ export default function ContractPageView({ initialContract }: ContractPageViewPr
                 <h2 className="text-lg font-bold">Complete Your Electronic Signature</h2>
               </div>
               <p className="text-xs text-zinc-500 mt-1">
-                Please review the terms above, provide your full legal name, and sign in the designated box below.
+                Please review the terms and financial schedule above, provide your legal name and role, and sign below. (Note: Contract clauses are read-only and cannot be altered by signees).
               </p>
             </div>
 
@@ -207,13 +362,13 @@ export default function ContractPageView({ initialContract }: ContractPageViewPr
 
                 <div>
                   <label className="block text-xs font-bold text-zinc-700 mb-1">
-                    Signee Title / Company Role
+                    Signee Title / Role in Organization
                   </label>
                   <input
                     type="text"
                     value={signerTitle}
                     onChange={(e) => setSignerTitle(e.target.value)}
-                    placeholder="e.g. Founder, CEO, or Authorized Signatory"
+                    placeholder="e.g. Managing Director, Founder, or Authorized Client"
                     className="w-full px-3.5 py-2.5 bg-zinc-50 border border-zinc-300 rounded-xl text-xs text-zinc-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
@@ -243,7 +398,7 @@ export default function ContractPageView({ initialContract }: ContractPageViewPr
                     className="mt-0.5 rounded border-zinc-300 text-emerald-600 focus:ring-emerald-500"
                   />
                   <span>
-                    I confirm that I have read and agree to the <strong>Standard Service Agreement</strong> with Macrotek Digital Solutions, and agree that this electronic signature carries the full legal weight of a handwritten signature.
+                    I confirm that I have reviewed the <strong>Master Service Agreement</strong> with Macrotek Digital Solutions, accept all milestone fees and terms, and agree that this electronic signature carries full legal enforceability.
                   </span>
                 </label>
               </div>
@@ -259,7 +414,7 @@ export default function ContractPageView({ initialContract }: ContractPageViewPr
               <button
                 type="submit"
                 disabled={isPending}
-                className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold text-xs uppercase tracking-wider rounded-2xl shadow-lg transition-all flex items-center justify-center gap-2"
+                className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold text-xs uppercase tracking-wider rounded-2xl shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer"
               >
                 {isPending ? (
                   <React.Fragment>
@@ -269,7 +424,7 @@ export default function ContractPageView({ initialContract }: ContractPageViewPr
                 ) : (
                   <React.Fragment>
                     <Icons.CheckCircle2 size={16} />
-                    <span>Sign &amp; Execute Agreement</span>
+                    <span>Sign &amp; Execute Service Agreement</span>
                   </React.Fragment>
                 )}
               </button>

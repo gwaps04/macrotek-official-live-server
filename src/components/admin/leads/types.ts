@@ -21,9 +21,25 @@ export interface UnifiedLead {
   status: string;
   paymentStatus?: 'Paid' | 'Pending';
   createdAt: string;
+
+  // Contract integration attributes
+  contractId?: string;
+  contractStatus?: 'Draft' | 'Sent' | 'Signed' | 'None';
+  contractAccessCode?: string;
+  contractCost?: number;
+  contractCurrency?: 'PHP' | 'USD' | string;
+  contractDownpaymentPct?: number;
+  contractSignedAt?: string | null;
+  contractSignedBy?: string | null;
+  contractSignedByTitle?: string | null;
+  contractAttachmentUrl?: string | null;
+  contractAttachmentName?: string | null;
+  contractSigningMethod?: 'electronic' | 'manual_hardcopy';
+  companyName?: string;
 }
 
 export type FilterType = 'all' | 'appointment' | 'enrollment';
 export type StatusFilter = 'all' | 'Pending' | 'Confirmed' | 'Registered' | 'Completed' | 'Cancelled';
+export type ContractFilter = 'all' | 'Signed' | 'Draft' | 'Sent' | 'Unsent';
 export type DatePreset = 'all' | 'today' | 'yesterday' | 'last7' | 'last30' | 'upcoming' | 'custom';
 export type DateTarget = 'scheduled' | 'created';

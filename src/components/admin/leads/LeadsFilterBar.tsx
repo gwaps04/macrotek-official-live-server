@@ -13,6 +13,8 @@ interface LeadsFilterBarProps {
   onTypeFilterChange: (t: FilterType) => void;
   statusFilter: StatusFilter;
   onStatusFilterChange: (s: StatusFilter) => void;
+  contractFilter?: 'all' | 'Signed' | 'Pending';
+  onContractFilterChange?: (c: 'all' | 'Signed' | 'Pending') => void;
   datePreset: DatePreset;
   onDatePresetChange: (p: DatePreset) => void;
   dateTarget: DateTarget;
@@ -36,6 +38,8 @@ export default function LeadsFilterBar({
   onTypeFilterChange,
   statusFilter,
   onStatusFilterChange,
+  contractFilter = 'all',
+  onContractFilterChange,
   datePreset,
   onDatePresetChange,
   dateTarget,
@@ -184,24 +188,47 @@ export default function LeadsFilterBar({
           </button>
         </div>
 
-        {/* Status Pills */}
-        <div className="flex flex-wrap items-center gap-1.5">
-          <span className="text-zinc-400 font-semibold uppercase text-[10px] tracking-wider mr-1">
-            Status:
-          </span>
-          {STATUS_LIST.map((st) => (
-            <button
-              key={st}
-              onClick={() => onStatusFilterChange(st)}
-              className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${
-                statusFilter === st 
-                  ? 'bg-emerald-600 text-white font-bold' 
-                  : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200'
-              }`}
-            >
-              {st === 'all' ? 'All' : st}
-            </button>
-          ))}
+        {/* Status & Contract Filter Pills */}
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-zinc-400 font-semibold uppercase text-[10px] tracking-wider mr-1">
+              Status:
+            </span>
+            {STATUS_LIST.map((st) => (
+              <button
+                key={st}
+                onClick={() => onStatusFilterChange(st)}
+                className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${
+                  statusFilter === st 
+                    ? 'bg-emerald-600 text-white font-bold' 
+                    : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200'
+                }`}
+              >
+                {st === 'all' ? 'All' : st}
+              </button>
+            ))}
+          </div>
+
+          {onContractFilterChange && (
+            <div className="flex items-center gap-1.5 border-l border-zinc-200 pl-3">
+              <span className="text-zinc-400 font-semibold uppercase text-[10px] tracking-wider mr-1">
+                Contract:
+              </span>
+              {(['all', 'Signed', 'Pending'] as const).map((cf) => (
+                <button
+                  key={cf}
+                  onClick={() => onContractFilterChange(cf)}
+                  className={`px-2 py-0.5 rounded-lg text-[11px] font-bold transition-all ${
+                    contractFilter === cf
+                      ? 'bg-zinc-900 text-white'
+                      : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200'
+                  }`}
+                >
+                  {cf === 'all' ? 'All' : cf === 'Signed' ? 'Signed Only' : 'Pending'}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
       </div>

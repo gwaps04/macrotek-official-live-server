@@ -1,6 +1,7 @@
 import React from 'react';
 import Image from 'next/image';
 import { ContractData } from '@/app/contract/contract.actions';
+import * as Icons from 'lucide-react';
 
 // FILE: src/components/contract/ContractDocument.tsx
 
@@ -9,283 +10,268 @@ interface ContractDocumentProps {
 }
 
 export default function ContractDocument({ contract }: ContractDocumentProps) {
-  const formattedDate = contract.signed_at 
-    ? new Date(contract.signed_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
-    : new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+  const rawDate = contract.signed_at || contract.created_at;
+  const formattedDate = rawDate 
+    ? new Date(rawDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+    : 'Pending Execution';
+
+  const totalCost = Number(contract.project_cost) || 0;
+  const downpaymentPct = Number(contract.downpayment_percentage ?? 50);
+  const downpaymentAmount = (totalCost * (downpaymentPct / 100));
+  const balancePct = Math.max(0, 100 - downpaymentPct);
+  const balanceAmount = Math.max(0, totalCost - downpaymentAmount);
+  const currencySymbol = contract.currency === 'PHP' ? '₱' : '$';
+  const currencyCode = contract.currency || 'PHP';
+
+  const refNumber = `MDS-AGR-${(contract.id || '0000').slice(0, 8).toUpperCase()}`;
 
   return (
-    <div className="bg-white text-zinc-900 shadow-xl border border-zinc-200/90 rounded-2xl md:rounded-3xl p-6 sm:p-10 md:p-16 max-w-4xl mx-auto print:shadow-none print:border-none print:p-0 print:m-0 print:max-w-none font-serif text-[13.5px] leading-relaxed">
+    <div className="bg-white text-zinc-900 shadow-2xl border border-zinc-200/90 rounded-2xl md:rounded-3xl p-6 sm:p-10 md:p-14 max-w-4xl mx-auto print:shadow-none print:border-none print:p-0 print:m-0 print:max-w-none font-serif text-[13px] leading-relaxed">
       
-      {/* Header */}
-      <div className="text-center pb-8 border-b border-zinc-200 print:pb-6">
-        <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-zinc-950 font-sans uppercase">
-          Standard Service Agreement
-        </h1>
-        <p className="text-sm font-semibold tracking-wide text-zinc-600 font-sans mt-1">
-          Macrotek Digital Solutions
-        </p>
+      {/* Document Letterhead */}
+      <div className="border-b-2 border-zinc-900 pb-6 print:pb-4 mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 font-sans">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="w-3 h-3 rounded-full bg-emerald-600 inline-block" />
+              <span className="text-xs font-black tracking-widest uppercase text-zinc-500">
+                Macrotek Digital Solutions
+              </span>
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-zinc-950 mt-1 uppercase tracking-tight">
+              Master Service Agreement
+            </h1>
+            <p className="text-xs text-zinc-600 font-medium mt-0.5">
+              Enterprise Software Architecture &bull; Automation Pipelines &bull; Digital Infrastructure
+            </p>
+          </div>
+
+          <div className="text-left sm:text-right text-xs text-zinc-500 space-y-0.5 sm:self-center">
+            <p className="font-mono font-bold text-zinc-900 text-xs">REF: {refNumber}</p>
+            <p>Effective Date: <span className="font-medium text-zinc-800">{formattedDate}</span></p>
+            <p className="font-mono text-[11px] text-zinc-400">Security Gate: Protected Access</p>
+          </div>
+        </div>
       </div>
 
-      {/* Metadata Table */}
-      <div className="my-8 overflow-hidden border border-zinc-300 rounded-xl print:rounded-none">
-        <table className="w-full text-left border-collapse text-xs font-sans">
-          <tbody>
-            <tr className="border-b border-zinc-300">
-              <th className="w-1/3 py-2.5 px-4 bg-zinc-50 font-bold text-zinc-700 border-r border-zinc-300">
-                Provider:
-              </th>
-              <td className="py-2.5 px-4 font-medium text-zinc-900">
-                MACROTEK DIGITAL SOLUTIONS / Jason Millena (&quot;Provider&quot;)
-              </td>
-            </tr>
-            <tr className="border-b border-zinc-300">
-              <th className="py-2.5 px-4 bg-zinc-50 font-bold text-zinc-700 border-r border-zinc-300">
-                Client:
-              </th>
-              <td className="py-2.5 px-4 font-medium text-zinc-900">
-                {contract.client_name} {contract.company_name ? `/ ${contract.company_name}` : ''} (&quot;Client&quot;)
-              </td>
-            </tr>
-            <tr className="border-b border-zinc-300">
-              <th className="py-2.5 px-4 bg-zinc-50 font-bold text-zinc-700 border-r border-zinc-300">
-                Address:
-              </th>
-              <td className="py-2.5 px-4 font-medium text-zinc-900">
-                {contract.client_address || 'Legazpi City, Albay, Philippines'}
-              </td>
-            </tr>
-            <tr className="border-b border-zinc-300">
-              <th className="py-2.5 px-4 bg-zinc-50 font-bold text-zinc-700 border-r border-zinc-300">
-                Date:
-              </th>
-              <td className="py-2.5 px-4 font-medium text-zinc-900">
-                {formattedDate}
-              </td>
-            </tr>
-            <tr>
-              <th className="py-2.5 px-4 bg-zinc-50 font-bold text-zinc-700 border-r border-zinc-300">
-                Project Cost:
-              </th>
-              <td className="py-2.5 px-4 font-bold text-zinc-950">
-                ${Number(contract.project_cost).toLocaleString()} {contract.currency || 'USD'}
-              </td>
-            </tr>
-          </tbody>
-        </table>
+      {/* Parties Summary Box */}
+      <div className="mb-8 border border-zinc-300 rounded-2xl overflow-hidden print:rounded-none font-sans text-xs">
+        <div className="bg-zinc-100/80 px-4 py-2 border-b border-zinc-300 font-bold text-zinc-800 uppercase tracking-wider text-[11px]">
+          Parties to This Agreement
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-zinc-300">
+          
+          {/* Service Provider */}
+          <div className="p-4 bg-zinc-50/50 space-y-1">
+            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block">Service Provider</span>
+            <p className="font-bold text-zinc-950 text-sm">MACROTEK DIGITAL SOLUTIONS</p>
+            <p className="text-zinc-600">Represented by: <strong className="text-zinc-800">Jason Millena</strong> (Lead Architect)</p>
+            <p className="text-zinc-600">Address: Legazpi City, Albay, Philippines</p>
+            <p className="text-zinc-600">Email: admin@macrotek.com / contact@macrotek.com</p>
+          </div>
+
+          {/* Client */}
+          <div className="p-4 space-y-1">
+            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block">Authorized Client</span>
+            <p className="font-bold text-zinc-950 text-sm">
+              {contract.client_name} {contract.company_name ? `(${contract.company_name})` : ''}
+            </p>
+            <p className="text-zinc-600">Email: <span className="text-zinc-800 font-medium">{contract.client_email}</span></p>
+            <p className="text-zinc-600">Phone: <span className="text-zinc-800 font-medium">{contract.client_phone}</span></p>
+            <p className="text-zinc-600">Address: <span className="text-zinc-800">{contract.client_address || 'Legazpi City / Metro Manila, Philippines'}</span></p>
+          </div>
+
+        </div>
       </div>
 
-      {/* Sections 1 to 10 */}
+      {/* Financial Schedule Highlight Table */}
+      <div className="mb-8 p-5 bg-zinc-50 border-2 border-zinc-200 rounded-2xl print:rounded-none font-sans">
+        <div className="flex items-center justify-between mb-3 border-b border-zinc-200 pb-2">
+          <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-900 flex items-center gap-1.5">
+            <Icons.CreditCard size={15} className="text-emerald-600" />
+            Financial Investment &amp; Payment Schedule
+          </h3>
+          <span className="text-xs font-semibold px-2 py-0.5 bg-zinc-200/80 rounded text-zinc-800">
+            Currency: {currencyCode} ({currencySymbol})
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center sm:text-left">
+          
+          <div className="p-3 bg-white rounded-xl border border-zinc-200 shadow-2xs">
+            <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider block">Total Project Cost</span>
+            <p className="text-lg font-black text-zinc-950 mt-0.5">
+              {currencySymbol}{totalCost.toLocaleString()} <span className="text-xs font-normal text-zinc-500">{currencyCode}</span>
+            </p>
+            <span className="text-[10px] text-zinc-400">Total agreed fee</span>
+          </div>
+
+          <div className="p-3 bg-emerald-50/70 rounded-xl border border-emerald-200 shadow-2xs">
+            <span className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider block">
+              Commencement Downpayment ({downpaymentPct}%)
+            </span>
+            <p className="text-lg font-black text-emerald-950 mt-0.5">
+              {currencySymbol}{downpaymentAmount.toLocaleString()} <span className="text-xs font-normal text-emerald-700">{currencyCode}</span>
+            </p>
+            <span className="text-[10px] text-emerald-700 font-semibold">Due upon contract signing</span>
+          </div>
+
+          <div className="p-3 bg-zinc-100/70 rounded-xl border border-zinc-300 shadow-2xs">
+            <span className="text-[10px] font-bold text-zinc-600 uppercase tracking-wider block">
+              Handover Balance ({balancePct}%)
+            </span>
+            <p className="text-lg font-black text-zinc-900 mt-0.5">
+              {currencySymbol}{balanceAmount.toLocaleString()} <span className="text-xs font-normal text-zinc-500">{currencyCode}</span>
+            </p>
+            <span className="text-[10px] text-zinc-500">Due upon final deployment</span>
+          </div>
+
+        </div>
+      </div>
+
+      {/* Contract Body Clauses */}
       <div className="space-y-6 text-zinc-800">
         
         {/* Section 1 */}
         <section className="space-y-2">
-          <h2 className="text-base font-bold text-zinc-950 font-sans border-b border-zinc-200 pb-1">
-            1. Scope of Work
+          <h2 className="text-sm font-bold text-zinc-950 font-sans uppercase tracking-wide border-b border-zinc-200 pb-1 flex items-center justify-between">
+            <span>1. Scope of Digital Services &amp; Deliverables</span>
           </h2>
           <p>
-            <strong>1.1 Project Definition:</strong> The Provider agrees to deliver the digital assets and services as specified in the attached Project Quotation/Proposal.
+            <strong>1.1 Professional Engagement:</strong> The Service Provider (&quot;Macrotek Digital Solutions&quot;) agrees to design, architect, configure, and deploy the digital systems, web applications, integrations, and automation workflows mutually agreed upon with the Client (&quot;{contract.client_name}&quot;).
           </p>
           <p>
-            <strong>1.2 Out-of-Scope Requests:</strong> Any features or modifications requested by the Client that are not explicitly listed in the Project Quotation shall be considered &quot;Out-of-Scope&quot; and may require a separate fee-based agreement or a Change Order.
+            <strong>1.2 Scope Specification:</strong> {contract.scope_description || 'Scope includes custom architecture development, multi-platform database synchronization, webhook triggers (including n8n / ClickUp / Google Workspace), and automated lead management.'}
+          </p>
+          <p>
+            <strong>1.3 Change Orders:</strong> Any features, design revisions, or integrations requested by the Client outside the documented scope shall be handled through a formal written Change Order with mutually agreed-upon pricing before work on that item begins.
           </p>
         </section>
 
         {/* Section 2 */}
         <section className="space-y-2">
-          <h2 className="text-base font-bold text-zinc-950 font-sans border-b border-zinc-200 pb-1">
-            2. Financial Terms
+          <h2 className="text-sm font-bold text-zinc-950 font-sans uppercase tracking-wide border-b border-zinc-200 pb-1">
+            2. Payment Milestones &amp; Billing Terms
           </h2>
           <p>
-            <strong>2.1 Service Fees:</strong> The total project fee is <strong>${Number(contract.project_cost).toLocaleString()} {contract.currency || 'USD'}</strong>, as detailed in the Project Quotation.
+            <strong>2.1 Total Agreed Investment:</strong> The Client agrees to compensate the Provider the total sum of <strong>{currencySymbol}{totalCost.toLocaleString()} {currencyCode}</strong>.
           </p>
           <p>
-            <strong>2.2 Payment Schedule:</strong>
+            <strong>2.2 Milestone Breakdown:</strong>
           </p>
-          <ul className="list-disc pl-6 space-y-1">
+          <ul className="list-disc pl-6 space-y-1 font-sans text-xs">
             <li>
-              <strong>Commencement Deposit:</strong> A non-refundable downpayment of 50% (${(Number(contract.project_cost) * 0.5).toLocaleString()} {contract.currency || 'USD'}) is required upfront to secure the development slot.
+              <strong>Initial Downpayment ({downpaymentPct}%):</strong> Amounting to <strong>{currencySymbol}{downpaymentAmount.toLocaleString()} {currencyCode}</strong>, payable upon execution of this Agreement to reserve the engineering timeline and initialize environment setup.
             </li>
             <li>
-              <strong>Final Project Balance:</strong> The remaining 50% balance (${(Number(contract.project_cost) * 0.5).toLocaleString()} {contract.currency || 'USD'}) is due immediately upon project completion, successful live deployment, and formal handover.
+              <strong>Final Balance ({balancePct}%):</strong> Amounting to <strong>{currencySymbol}{balanceAmount.toLocaleString()} {currencyCode}</strong>, payable immediately upon completion, deployment to production staging, and turnover of master administrative access.
             </li>
           </ul>
           <p>
-            <strong>2.3 Delayed Payments:</strong> Work may be suspended if payments are overdue by more than seven (7) calendar days.
-          </p>
-          <p>
-            <strong>2.4 Third-Party Software &amp; Integrations:</strong> All third-party software subscriptions, paid plugins, APIs, premium tools, CRMs, or automation platforms that arise due to project needs or integrations shall be registered under the Client&apos;s own accounts and charged directly to the Client&apos;s financial details from Day 1.
+            <strong>2.3 Third-Party Software &amp; APIs:</strong> The Client shall be directly responsible for all recurring subscriptions to external cloud services, domain registrars, hosting, or third-party APIs incurred for the project.
           </p>
         </section>
 
         {/* Section 3 */}
         <section className="space-y-2">
-          <h2 className="text-base font-bold text-zinc-950 font-sans border-b border-zinc-200 pb-1">
-            3. Delivery &amp; Acceptance (The Handover)
+          <h2 className="text-sm font-bold text-zinc-950 font-sans uppercase tracking-wide border-b border-zinc-200 pb-1">
+            3. Delivery, Review &amp; Master Handover
           </h2>
           <p>
-            <strong>3.1 Live Deployment:</strong> The project is considered &quot;Delivered&quot; once the digital asset is live on the production server and accessible via the public domain.
+            <strong>3.1 Acceptance Period:</strong> Upon notification by the Provider that the deliverable is live on staging or production, the Client shall have seven (7) business days to review all features and report any reproducible functional discrepancies.
           </p>
           <p>
-            <strong>3.2 Final Acceptance:</strong> The Client shall have seven (7) business days to conduct a final review. If no written list of bugs (within the original scope) is provided within this period, the project is deemed &quot;Accepted.&quot;
+            <strong>3.2 Administrative Turnover:</strong> Upon receipt of the final balance, the Provider shall issue the &quot;Turnover Packet&quot; containing all master administrative credentials, repository links, and API access keys.
           </p>
           <p>
-            <strong>3.3 Credential Turnover &amp; Security:</strong> Upon receipt of the final balance, the Provider shall issue a comprehensive &quot;Turnover Packet&quot; containing all administrative login credentials, API keys, and access details.
-          </p>
-          <p>
-            <strong>3.4 Security Responsibility:</strong> The Client is strictly responsible for updating all passwords immediately upon receipt. The Provider shall not be held liable for any security breaches or unauthorized access occurring after the successful handover of these credentials.
+            <strong>3.3 Security Ownership:</strong> The Client is solely responsible for changing passwords and safeguarding credentials immediately after turnover. The Provider shall not be liable for unauthorized access occurring subsequent to handover.
           </p>
         </section>
 
         {/* Section 4 */}
         <section className="space-y-2">
-          <h2 className="text-base font-bold text-zinc-950 font-sans border-b border-zinc-200 pb-1">
-            4. Client Responsibilities
+          <h2 className="text-sm font-bold text-zinc-950 font-sans uppercase tracking-wide border-b border-zinc-200 pb-1">
+            4. Intellectual Property &amp; Licensing
           </h2>
           <p>
-            <strong>4.1 Content Provision:</strong> The Client is responsible for providing all text, high-resolution logos, and specific images required for the project.
+            <strong>4.1 Client Content:</strong> All bespoke branding, logos, trademarks, and text supplied by the Client remain the exclusive intellectual property of the Client.
           </p>
           <p>
-            <strong>4.2 Approval Timelines:</strong> To maintain delivery speed, the Client agrees to provide feedback or approvals within 5 business days of a request. Delays in Client feedback will result in a day-for-day extension of the final delivery date.
+            <strong>4.2 Final Deliverables:</strong> Upon payment of the final balance in full, the Client is granted full ownership rights of the customer-facing digital asset.
+          </p>
+          <p>
+            <strong>4.3 Proprietary Architecture:</strong> Macrotek retains ownership of its proprietary pre-existing utility modules, build pipelines, and design system foundations, granting the Client a perpetual, non-exclusive license to use them in the operation of the delivered system.
           </p>
         </section>
 
         {/* Section 5 */}
         <section className="space-y-2">
-          <h2 className="text-base font-bold text-zinc-950 font-sans border-b border-zinc-200 pb-1">
-            5. Intellectual Property (IP)
+          <h2 className="text-sm font-bold text-zinc-950 font-sans uppercase tracking-wide border-b border-zinc-200 pb-1">
+            5. Data Privacy &amp; Confidentiality (Republic Act No. 10173)
           </h2>
           <p>
-            <strong>5.1 Final Product:</strong> Upon full payment of all outstanding balances, the Client shall own the customer-facing content and the specific instance of the website.
+            <strong>5.1 Strict Confidentiality:</strong> Both parties agree to maintain the strict confidentiality of all proprietary, technical, and commercial information disclosed during this engagement.
           </p>
           <p>
-            <strong>5.2 Proprietary Code:</strong> The Provider Macrotek retains exclusive ownership of all underlying proprietary code, custom frameworks, and specialized modules. The Client is granted a non-exclusive license to use these elements for the operation of the site.
+            <strong>5.2 Compliance with Philippine Law:</strong> All collection, storage, and processing of customer and corporate data performed in connection with this project shall strictly comply with the Data Privacy Act of 2012 (RA 10173) of the Philippines.
           </p>
           <p>
-            <strong>5.3 General Portfolio Rights:</strong> The Provider retains the right to display the project and results in its corporate portfolio and promotional media.
-          </p>
-        </section>
-
-        {/* Section 6 */}
-        <section className="space-y-2">
-          <h2 className="text-base font-bold text-zinc-950 font-sans border-b border-zinc-200 pb-1">
-            6. Professional Standards &amp; Liability
-          </h2>
-          <p>
-            <strong>6.1 Standard of Care:</strong> The Provider shall perform services with professional diligence in accordance with industry standards.
-          </p>
-          <p>
-            <strong>6.2 Limitation of Liability:</strong> The Provider shall not be liable for indirect, incidental, or consequential losses resulting from external factors such as 3rd-party hosting outages or cybersecurity threats. Total liability for any direct error shall not exceed the total fees paid by the Client.
-          </p>
-        </section>
-
-        {/* Section 7 */}
-        <section className="space-y-2">
-          <h2 className="text-base font-bold text-zinc-950 font-sans border-b border-zinc-200 pb-1">
-            7. Termination
-          </h2>
-          <p>
-            <strong>7.1 Cancellation:</strong> Either party may terminate this agreement with 7 days&apos; written notice.
-          </p>
-          <p>
-            <strong>7.2 Settlement:</strong> In the event of cancellation, the Client shall be invoiced for all labor and expenses incurred up to the date of termination. The Commencement Deposit remains non-refundable.
-          </p>
-        </section>
-
-        {/* Section 8 */}
-        <section className="space-y-2">
-          <h2 className="text-base font-bold text-zinc-950 font-sans border-b border-zinc-200 pb-1">
-            8. Post-Launch Support &amp; Infrastructure
-          </h2>
-          <p>
-            <strong>8.1 Warranty Period:</strong> The Provider includes thirty (30) days of technical stability support following the live launch to resolve any bugs or errors within the original scope.
-          </p>
-          <p>
-            <strong>8.2 Domain &amp; Hosting Responsibility:</strong> Domain registration, renewal fees, and web hosting infrastructure costs shall be the direct and sole financial responsibility of the Client from Day 1, billed straight to the Client&apos;s payment details.
-          </p>
-          <p>
-            <strong>8.3 Post-Completion Changes &amp; Maintenance:</strong> Any feature requests, design modifications, content updates, or scope expansions requested after project completion and final handover shall be subject to a separate per-request quote or Change Order before work commences.
-          </p>
-        </section>
-
-        {/* Section 9 */}
-        <section className="space-y-2">
-          <h2 className="text-base font-bold text-zinc-950 font-sans border-b border-zinc-200 pb-1">
-            9. Portfolio &amp; Brand Advocacy
-          </h2>
-          <p>
-            <strong>9.1 Promotional Media Access:</strong> The Client grants the Provider non-exclusive rights to document the development lifecycle of the project, including technical walkthroughs and screen recordings for marketing channels.
-          </p>
-          <p>
-            <strong>9.2 Success Story Collaboration:</strong> Upon successful delivery, the Client agrees to collaborate with the Provider&apos;s marketing team to generate a &quot;Success Story&quot; or case study.
-          </p>
-          <p>
-            <strong>9.3 Identity Usage:</strong> The Provider may utilize the Client&apos;s business name and logo solely to identify the Client as a project partner.
-          </p>
-          <p>
-            <strong>9.4 Data Masking Guarantee:</strong> The Provider strictly agrees to mask, blur, or omit any sensitive Client information during the creation of promotional media.
-          </p>
-        </section>
-
-        {/* Section 10 */}
-        <section className="space-y-2">
-          <h2 className="text-base font-bold text-zinc-950 font-sans border-b border-zinc-200 pb-1">
-            10. Data Privacy &amp; Confidentiality
-          </h2>
-          <p>
-            <strong>10.1 Confidentiality Obligation:</strong> Both parties agree to maintain the strict confidentiality of all proprietary or sensitive information shared during the term of this partnership.
-          </p>
-          <p>
-            <strong>10.2 Data Protection Standards:</strong> The Provider shall implement reasonable technical and organizational security measures to protect Client data stored within the development environment.
-          </p>
-          <p>
-            <strong>10.3 Legal Compliance:</strong> All data processing performed by the Provider shall be conducted in accordance with the Data Privacy Act of 2012 (Republic Act No. 10173) of the Philippines.
-          </p>
-          <p>
-            <strong>10.4 Post-Termination Privacy:</strong> The obligation to protect confidential information and comply with data privacy standards shall survive the termination or expiration of this Agreement.
+            <strong>5.3 Warranty:</strong> The Provider provides a thirty (30) day stability warranty following launch to address any latent bugs within the agreed scope at zero additional cost.
           </p>
         </section>
 
       </div>
 
-      {/* Signature & Execution Block */}
-      <div className="mt-12 pt-8 border-t-2 border-zinc-300 font-sans">
-        <h3 className="text-sm font-bold uppercase tracking-wider text-zinc-900 mb-6 text-center">
-          Execution &amp; Signatures
-        </h3>
+      {/* Execution & Signature Section */}
+      <div className="mt-12 pt-8 border-t-2 border-zinc-900 font-sans">
+        <div className="text-center mb-6">
+          <h3 className="text-sm font-bold uppercase tracking-widest text-zinc-900">
+            Signatures &amp; Legal Execution
+          </h3>
+          <p className="text-xs text-zinc-500 mt-0.5">
+            By executing below, both parties confirm they have read, understood, and agreed to the terms outlined above.
+          </p>
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           
-          {/* Provider Signature */}
+          {/* Provider Signature Card */}
           <div className="p-5 bg-zinc-50 rounded-2xl border border-zinc-200 space-y-3">
-            <span className="text-xs font-bold uppercase tracking-wider text-zinc-500 block">
-              For Provider:
+            <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">
+              For Service Provider:
             </span>
             <div className="h-16 flex items-end border-b border-zinc-300 pb-2">
-              <span className="font-serif italic text-2xl text-zinc-800 font-medium">
+              <span className="font-serif italic text-2xl text-zinc-800 font-semibold tracking-wide">
                 Jason Millena
               </span>
             </div>
             <div className="text-xs text-zinc-700 space-y-0.5">
-              <p className="font-bold">Jason Millena / Lead Architect</p>
-              <p>Macrotek Digital Solutions</p>
-              <p className="text-[11px] text-zinc-500">Date: {formattedDate}</p>
+              <p className="font-bold text-zinc-950">Jason Millena / Lead Solutions Architect</p>
+              <p className="text-zinc-600">Macrotek Digital Solutions</p>
+              <p className="text-[11px] text-zinc-500 font-mono">Date: {formattedDate}</p>
             </div>
           </div>
 
-          {/* Client Signature */}
+          {/* Client Signature Card */}
           <div className="p-5 bg-zinc-50 rounded-2xl border border-zinc-200 space-y-3">
-            <span className="text-xs font-bold uppercase tracking-wider text-zinc-500 block">
-              For Client:
+            <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">
+              For Authorized Client:
             </span>
 
-            {contract.status === 'Signed' && contract.signature_data ? (
+            {/* Check if Signed */}
+            {contract.status === 'Signed' ? (
               <div className="space-y-3">
-                <div className="h-16 flex items-center justify-center border-b border-emerald-400 bg-white rounded-lg p-1">
-                  {contract.signature_type === 'typed' ? (
-                    <span className="font-serif italic text-2xl text-emerald-900 font-semibold">
-                      {contract.signed_by_name}
+                <div className="h-16 flex items-center justify-center border-b border-emerald-500 bg-white rounded-lg p-1 overflow-hidden">
+                  {contract.signing_method === 'manual_hardcopy' ? (
+                    <div className="flex items-center gap-2 text-indigo-700 font-bold text-xs">
+                      <Icons.FileCheck2 size={18} />
+                      <span>Hardcopy Executed (Uploaded on File)</span>
+                    </div>
+                  ) : contract.signature_type === 'typed' ? (
+                    <span className="font-serif italic text-2xl text-emerald-900 font-bold">
+                      {contract.signed_by_name || contract.client_name}
                     </span>
-                  ) : (
+                  ) : contract.signature_data ? (
                     <Image
                       src={contract.signature_data}
                       alt="Client e-Signature"
@@ -294,33 +280,43 @@ export default function ContractDocument({ contract }: ContractDocumentProps) {
                       className="max-h-14 w-auto object-contain"
                       unoptimized
                     />
+                  ) : (
+                    <span className="font-serif italic text-xl text-emerald-900 font-semibold">
+                      {contract.signed_by_name || contract.client_name}
+                    </span>
                   )}
                 </div>
                 <div className="text-xs text-zinc-700 space-y-0.5">
-                  <p className="font-bold text-emerald-800">
+                  <p className="font-bold text-emerald-800 flex items-center gap-1">
+                    <Icons.CheckCircle2 size={13} />
                     Digitally Executed: {contract.signed_by_name || contract.client_name}
                   </p>
-                  <p>{contract.signed_by_title || 'Authorized Representative'}</p>
+                  <p className="text-zinc-600">{contract.signed_by_title || 'Authorized Representative'}</p>
                   <p className="text-[10px] text-zinc-500 font-mono">
-                    Timestamp: {new Date(contract.signed_at || '').toUTCString()}
+                    Timestamp: {contract.signed_at ? new Date(contract.signed_at).toUTCString() : 'Recorded in Database'}
                   </p>
                 </div>
               </div>
             ) : (
               <div className="h-16 flex items-end border-b-2 border-dashed border-zinc-300 pb-2">
                 <span className="text-xs text-zinc-400 italic">
-                  Awaiting electronic signature below...
+                  Awaiting electronic signature verification below...
                 </span>
               </div>
             )}
 
             <div className="text-xs text-zinc-700">
-              <p className="font-semibold">{contract.client_name}</p>
+              <p className="font-semibold text-zinc-900">{contract.client_name}</p>
               {contract.company_name && <p className="text-zinc-500">{contract.company_name}</p>}
             </div>
           </div>
 
         </div>
+      </div>
+
+      {/* Footer Audit Notice */}
+      <div className="mt-8 pt-4 border-t border-zinc-200 text-center font-sans text-[10px] text-zinc-400 print:mt-4">
+        Document ID: {contract.id} &bull; Macrotek Digital Solutions &bull; Authorized E-Signature Document
       </div>
 
     </div>

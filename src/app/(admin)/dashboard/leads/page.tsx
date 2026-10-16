@@ -18,7 +18,7 @@ function format12Hour(timeStr: string | null | undefined): string {
 }
 
 export default async function LeadsCommandCenterPage() {
-  const [appointmentsResult, enrollmentsResult] = await Promise.all([
+  const [appointmentsResult, enrollmentsResult, contractsResult] = await Promise.all([
     sql`
       SELECT 
         id, appointment_date, appointment_time, client_first_name, client_last_name, 
@@ -38,11 +38,23 @@ export default async function LeadsCommandCenterPage() {
       LEFT JOIN class_schedules cs ON ce.schedule_id = cs.id
       LEFT JOIN classes c ON cs.class_id = c.id
       ORDER BY ce.created_at DESC
+    `,
+    sql`
+      SELECT * FROM contracts ORDER BY created_at DESC
     `
   ]);
 
+  // Index contracts by lead_id
+  const contractMap = new Map<string, any>();
+  contractsResult.forEach((c: any) => {
+    if (c.lead_id) {
+      contractMap.set(String(c.lead_id), c);
+    }
+  });
+
   const appointmentLeads: UnifiedLead[] = appointmentsResult.map((a: any) => {
     let answers: Record<string, any> = {};
+    let extractedCompany = '';
     if (a.prequalification_answers) {
       if (typeof a.prequalification_answers === 'string') {
         try {
@@ -55,9 +67,19 @@ export default async function LeadsCommandCenterPage() {
       }
     }
 
+    // Try extracting company from answers
+    for (const [k, v] of Object.entries(answers)) {
+      if (/company|business|organization/i.test(k) && typeof v === 'string') {
+        extractedCompany = v;
+        break;
+      }
+    }
+
     const apptDate = a.appointment_date 
       ? String(a.appointment_date).split('T')[0] 
       : 'Unspecified';
+
+    const c = contractMap.get(String(a.id));
 
     return {
       id: String(a.id),
@@ -74,7 +96,22 @@ export default async function LeadsCommandCenterPage() {
       notes: a.client_notes || '',
       prequalificationAnswers: answers,
       status: a.status || 'Pending',
-      createdAt: a.created_at ? new Date(a.created_at).toISOString() : new Date().toISOString()
+      createdAt: a.created_at ? new Date(a.created_at).toISOString() : new Date().toISOString(),
+
+      // Contract metadata
+      contractId: c ? String(c.id) : undefined,
+      contractStatus: c ? (c.status as any) : 'Draft',
+      contractAccessCode: c ? c.access_code : undefined,
+      contractCost: c ? Number(c.project_cost) : 50000,
+      contractCurrency: c ? c.currency : 'PHP',
+      contractDownpaymentPct: c ? Number(c.downpayment_percentage ?? 50) : 50,
+      contractSignedAt: c ? c.signed_at : null,
+      contractSignedBy: c ? c.signed_by_name : null,
+      contractSignedByTitle: c ? c.signed_by_title : null,
+      contractAttachmentUrl: c ? c.attachment_url : null,
+      contractAttachmentName: c ? c.attachment_name : null,
+      contractSigningMethod: c ? c.signing_method : 'electronic',
+      companyName: c?.company_name || extractedCompany || ''
     };
   });
 
@@ -88,6 +125,8 @@ export default async function LeadsCommandCenterPage() {
     const sessionTime = startTimeFormatted && endTimeFormatted 
       ? `${startTimeFormatted} - ${endTimeFormatted}` 
       : (startTimeFormatted || 'TBA');
+
+    const c = contractMap.get(String(e.id));
 
     return {
       id: String(e.id),
@@ -105,7 +144,22 @@ export default async function LeadsCommandCenterPage() {
       price: e.class_price !== undefined ? Number(e.class_price) : undefined,
       status: e.status || 'Registered',
       paymentStatus: (e.payment_status as 'Paid' | 'Pending') || 'Pending',
-      createdAt: e.created_at ? new Date(e.created_at).toISOString() : new Date().toISOString()
+      createdAt: e.created_at ? new Date(e.created_at).toISOString() : new Date().toISOString(),
+
+      // Contract metadata
+      contractId: c ? String(c.id) : undefined,
+      contractStatus: c ? (c.status as any) : 'Draft',
+      contractAccessCode: c ? c.access_code : undefined,
+      contractCost: c ? Number(c.project_cost) : (e.class_price ? Number(e.class_price) : 25000),
+      contractCurrency: c ? c.currency : 'PHP',
+      contractDownpaymentPct: c ? Number(c.downpayment_percentage ?? 50) : 50,
+      contractSignedAt: c ? c.signed_at : null,
+      contractSignedBy: c ? c.signed_by_name : null,
+      contractSignedByTitle: c ? c.signed_by_title : null,
+      contractAttachmentUrl: c ? c.attachment_url : null,
+      contractAttachmentName: c ? c.attachment_name : null,
+      contractSigningMethod: c ? c.signing_method : 'electronic',
+      companyName: c?.company_name || ''
     };
   });
 

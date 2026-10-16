@@ -22,6 +22,7 @@ export default function LeadsCommandCenter({ initialLeads }: LeadsCommandCenterP
   const [searchQuery, setSearchQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<FilterType>('all');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [contractFilter, setContractFilter] = useState<'all' | 'Signed' | 'Pending'>('all');
   const [datePreset, setDatePreset] = useState<DatePreset>('all');
   const [dateTarget, setDateTarget] = useState<DateTarget>('scheduled');
   const [customStartDate, setCustomStartDate] = useState('');
@@ -61,6 +62,12 @@ export default function LeadsCommandCenter({ initialLeads }: LeadsCommandCenterP
         if (leadStatus !== targetStatus) return false;
       }
 
+      // 2b. Contract filter
+      if (contractFilter !== 'all') {
+        if (contractFilter === 'Signed' && lead.contractStatus !== 'Signed') return false;
+        if (contractFilter === 'Pending' && lead.contractStatus === 'Signed') return false;
+      }
+
       // 3. Date filter
       if (datePreset !== 'all') {
         // Resolve target date in YYYY-MM-DD
@@ -92,6 +99,9 @@ export default function LeadsCommandCenter({ initialLeads }: LeadsCommandCenterP
         const matchesTitle = lead.title.toLowerCase().includes(q);
         const matchesAddress = (lead.address || '').toLowerCase().includes(q);
         const matchesNotes = (lead.notes || '').toLowerCase().includes(q);
+        const matchesCompany = (lead.companyName || '').toLowerCase().includes(q);
+        const matchesCode = (lead.contractAccessCode || '').toLowerCase().includes(q);
+        const matchesContractStatus = (lead.contractStatus || '').toLowerCase().includes(q);
         
         let matchesAnswers = false;
         if (lead.prequalificationAnswers) {
@@ -108,6 +118,9 @@ export default function LeadsCommandCenter({ initialLeads }: LeadsCommandCenterP
           !matchesTitle && 
           !matchesAddress && 
           !matchesNotes && 
+          !matchesCompany &&
+          !matchesCode &&
+          !matchesContractStatus &&
           !matchesAnswers
         ) {
           return false;
@@ -120,6 +133,7 @@ export default function LeadsCommandCenter({ initialLeads }: LeadsCommandCenterP
     initialLeads, 
     typeFilter, 
     statusFilter, 
+    contractFilter,
     datePreset, 
     dateTarget, 
     customStartDate, 
@@ -131,6 +145,7 @@ export default function LeadsCommandCenter({ initialLeads }: LeadsCommandCenterP
     searchQuery.trim() !== '' || 
     typeFilter !== 'all' || 
     statusFilter !== 'all' || 
+    contractFilter !== 'all' ||
     datePreset !== 'all' ||
     customStartDate ||
     customEndDate
@@ -140,6 +155,7 @@ export default function LeadsCommandCenter({ initialLeads }: LeadsCommandCenterP
     setSearchQuery('');
     setTypeFilter('all');
     setStatusFilter('all');
+    setContractFilter('all');
     setDatePreset('all');
     setDateTarget('scheduled');
     setCustomStartDate('');
@@ -164,6 +180,12 @@ export default function LeadsCommandCenter({ initialLeads }: LeadsCommandCenterP
       'Event Time',
       'Status',
       'Payment Status',
+      'Contract Status',
+      'Access Code',
+      'Project Cost',
+      'Currency',
+      'Downpayment %',
+      'Signing Method',
       'Captured Timestamp'
     ];
 
@@ -181,6 +203,12 @@ export default function LeadsCommandCenter({ initialLeads }: LeadsCommandCenterP
       `"${l.time}"`,
       `"${l.status}"`,
       `"${l.paymentStatus || 'N/A'}"`,
+      `"${l.contractStatus || 'Draft'}"`,
+      `"${l.contractAccessCode || ''}"`,
+      `"${l.contractCost || 0}"`,
+      `"${l.contractCurrency || 'PHP'}"`,
+      `"${l.contractDownpaymentPct ?? 50}%"`,
+      `"${l.contractSigningMethod || 'electronic'}"`,
       `"${l.createdAt}"`
     ]);
 
@@ -244,6 +272,8 @@ export default function LeadsCommandCenter({ initialLeads }: LeadsCommandCenterP
         onTypeFilterChange={setTypeFilter}
         statusFilter={statusFilter}
         onStatusFilterChange={setStatusFilter}
+        contractFilter={contractFilter}
+        onContractFilterChange={setContractFilter}
         datePreset={datePreset}
         onDatePresetChange={setDatePreset}
         dateTarget={dateTarget}

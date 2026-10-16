@@ -399,7 +399,9 @@ CREATE TABLE IF NOT EXISTS contracts (
   client_email TEXT NOT NULL,
   client_phone TEXT,
   project_cost NUMERIC DEFAULT 1500.00,
-  currency TEXT DEFAULT 'USD',
+  downpayment_percentage NUMERIC DEFAULT 50.00,
+  currency TEXT DEFAULT 'PHP',
+  access_code TEXT,
   scope_description TEXT,
   status TEXT DEFAULT 'Draft',
   signature_data TEXT,
@@ -408,8 +410,20 @@ CREATE TABLE IF NOT EXISTS contracts (
   signed_by_name TEXT,
   signed_by_title TEXT,
   signed_ip TEXT,
+  attachment_url TEXT,
+  attachment_name TEXT,
+  attachment_type TEXT,
+  signing_method TEXT DEFAULT 'electronic',
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
+ALTER TABLE contracts ADD COLUMN IF NOT EXISTS access_code TEXT;
+ALTER TABLE contracts ADD COLUMN IF NOT EXISTS downpayment_percentage NUMERIC DEFAULT 50.00;
+ALTER TABLE contracts ADD COLUMN IF NOT EXISTS attachment_url TEXT;
+ALTER TABLE contracts ADD COLUMN IF NOT EXISTS attachment_name TEXT;
+ALTER TABLE contracts ADD COLUMN IF NOT EXISTS attachment_type TEXT;
+ALTER TABLE contracts ADD COLUMN IF NOT EXISTS signing_method TEXT DEFAULT 'electronic';
+
 CREATE INDEX IF NOT EXISTS idx_contracts_lead_id ON contracts(lead_id);
+CREATE INDEX IF NOT EXISTS idx_contracts_access_code ON contracts(access_code);
