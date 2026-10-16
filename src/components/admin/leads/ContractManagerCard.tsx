@@ -6,9 +6,9 @@ import { UnifiedLead } from './types';
 import { 
   updateContractFinancialsAction, 
   updateContractStatusAndAttachmentAction,
-  regenerateAccessCodeAction,
-  getOrCreateContractAction
+  regenerateAccessCodeAction
 } from '@/app/contract/contract.actions';
+import { getDeterministicAccessCode } from '@/lib/contractUtils';
 
 // FILE: src/components/admin/leads/ContractManagerCard.tsx
 
@@ -28,7 +28,9 @@ export default function ContractManagerCard({ lead, onRefresh }: ContractManager
   const [clientAddress, setClientAddress] = useState<string>(lead.address || '');
 
   // Access Code State
-  const [accessCode, setAccessCode] = useState<string>(lead.contractAccessCode || '849201');
+  const [accessCode, setAccessCode] = useState<string>(
+    lead.contractAccessCode || getDeterministicAccessCode(lead.id)
+  );
 
   // Status & Attachment State
   const [contractStatus, setContractStatus] = useState<'Draft' | 'Sent' | 'Signed'>(
@@ -45,22 +47,30 @@ export default function ContractManagerCard({ lead, onRefresh }: ContractManager
   const [copyInviteFeedback, setCopyInviteFeedback] = useState(false);
   const [activeTab, setActiveTab] = useState<'terms' | 'status'>('terms');
 
-  // Initialize or fetch contract if missing access code
+  // Synchronize state whenever lead prop changes
   useEffect(() => {
-    if (!lead.contractAccessCode) {
-      getOrCreateContractAction(lead.id, lead.type).then((res) => {
-        if (res.success && res.contract) {
-          setAccessCode(res.contract.access_code);
-          setProjectCost(res.contract.project_cost);
-          setDownpaymentPct(res.contract.downpayment_percentage);
-          setCurrency((res.contract.currency as any) || 'PHP');
-          setContractStatus(res.contract.status);
-          if (res.contract.attachment_url) setAttachmentUrl(res.contract.attachment_url);
-          if (res.contract.attachment_name) setAttachmentName(res.contract.attachment_name);
-        }
-      });
-    }
-  }, [lead.id, lead.type, lead.contractAccessCode]);
+    const code = lead.contractAccessCode || getDeterministicAccessCode(lead.id);
+    setAccessCode(code);
+    setProjectCost(lead.contractCost || 50000);
+    setDownpaymentPct(lead.contractDownpaymentPct ?? 50);
+    setCurrency((lead.contractCurrency as any) || 'PHP');
+    setCompanyName(lead.companyName || '');
+    setClientAddress(lead.address || '');
+    setContractStatus((lead.contractStatus as any) || 'Draft');
+    setAttachmentUrl(lead.contractAttachmentUrl || null);
+    setAttachmentName(lead.contractAttachmentName || null);
+  }, [
+    lead.id, 
+    lead.contractAccessCode, 
+    lead.contractCost, 
+    lead.contractDownpaymentPct, 
+    lead.contractCurrency, 
+    lead.companyName, 
+    lead.address, 
+    lead.contractStatus, 
+    lead.contractAttachmentUrl, 
+    lead.contractAttachmentName
+  ]);
 
   // Derived financial math
   const currencySymbol = currency === 'PHP' ? '₱' : '$';

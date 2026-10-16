@@ -450,7 +450,7 @@ function createInitialStore(): MockStore {
         project_cost: 50000,
         downpayment_percentage: 50,
         currency: 'PHP',
-        access_code: '849201',
+        access_code: '928641',
         scope_description: 'Custom Enterprise ERP Architecture, Lead Command Center & Workflow Automation Integration.',
         status: 'Draft',
         signature_data: null,
@@ -465,6 +465,62 @@ function createInitialStore(): MockStore {
         signing_method: 'electronic',
         created_at: new Date(Date.now() - 3600000 * 2).toISOString(),
         updated_at: new Date(Date.now() - 3600000 * 2).toISOString()
+      },
+      {
+        id: 'ct-ap2',
+        lead_id: 'ap2',
+        lead_type: 'appointment',
+        client_name: 'David Vance',
+        company_name: 'TechCorp Solutions',
+        client_address: 'Makati Central Business District, Philippines',
+        client_email: 'david.vance@techcorp.io',
+        client_phone: '+63 920 555 4321',
+        project_cost: 75000,
+        downpayment_percentage: 50,
+        currency: 'PHP',
+        access_code: '672017',
+        scope_description: 'Full Infrastructure & High-Volume Serverless API Architecture Audit.',
+        status: 'Draft',
+        signature_data: null,
+        signature_type: 'drawn',
+        signed_at: null,
+        signed_by_name: null,
+        signed_by_title: null,
+        signed_ip: null,
+        attachment_url: null,
+        attachment_name: null,
+        attachment_type: null,
+        signing_method: 'electronic',
+        created_at: new Date(Date.now() - 3600000 * 18).toISOString(),
+        updated_at: new Date(Date.now() - 3600000 * 18).toISOString()
+      },
+      {
+        id: 'ct-ce1',
+        lead_id: 'ce1',
+        lead_type: 'enrollment',
+        client_name: 'Sarah Jenkins',
+        company_name: 'Enterprise Education',
+        client_address: 'Bonifacio Global City, Taguig, Philippines',
+        client_email: 'sarah.j@enterprise.io',
+        client_phone: '+63 917 888 1234',
+        project_cost: 25000,
+        downpayment_percentage: 50,
+        currency: 'PHP',
+        access_code: '831273',
+        scope_description: 'Full Cohort Professional Enterprise Development Course Enrollment.',
+        status: 'Draft',
+        signature_data: null,
+        signature_type: 'drawn',
+        signed_at: null,
+        signed_by_name: null,
+        signed_by_title: null,
+        signed_ip: null,
+        attachment_url: null,
+        attachment_name: null,
+        attachment_type: null,
+        signing_method: 'electronic',
+        created_at: new Date(Date.now() - 3600000 * 4).toISOString(),
+        updated_at: new Date(Date.now() - 3600000 * 4).toISOString()
       }
     ]
   };
@@ -1051,8 +1107,12 @@ function processMockQuery(strings: TemplateStringsArray | string | string[], val
       return [item];
     }
     if (/^UPDATE contracts SET/i.test(normalized)) {
-      const targetId = values[values.length - 1];
-      const c = mockStore.contracts.find(x => x.id === targetId || x.lead_id === targetId);
+      const targetId1 = values[values.length - 1];
+      const targetId2 = values[values.length - 2];
+      const c = mockStore.contracts.find(x => 
+        x.id === targetId1 || x.lead_id === targetId1 ||
+        (targetId2 && (x.id === targetId2 || x.lead_id === targetId2))
+      );
       if (c) {
         c.updated_at = new Date().toISOString();
         if (/status\s*=\s*/i.test(normalized)) {
@@ -1103,9 +1163,20 @@ function processMockQuery(strings: TemplateStringsArray | string | string[], val
     }
     if (/WHERE lead_id =/i.test(normalized)) {
       const leadId = values[0];
-      const list = mockStore.contracts.filter(c => c.lead_id === leadId);
+      const list = mockStore.contracts.filter(c => c.lead_id === leadId || c.id === leadId);
       list.forEach(c => {
-        if (!c.access_code) c.access_code = String(Math.floor(100000 + Math.random() * 900000));
+        if (!c.access_code) {
+          let h = 0x811c9dc5;
+          const seed = c.lead_id || c.id || '';
+          for (let i = 0; i < seed.length; i++) {
+            h ^= seed.charCodeAt(i);
+            h = Math.imul(h, 0x01000193);
+          }
+          h ^= h >>> 13;
+          h = Math.imul(h, 0x5bd1e995);
+          h ^= h >>> 15;
+          c.access_code = String(100000 + (Math.abs(h) % 900000));
+        }
         if (c.downpayment_percentage === undefined) c.downpayment_percentage = 50;
         if (!c.currency) c.currency = 'PHP';
       });

@@ -55,7 +55,7 @@ export default function ContractPageView({ initialContract }: ContractPageViewPr
     e.preventDefault();
     setAccessCodeError(null);
 
-    const entered = accessCodeInput.trim();
+    const entered = accessCodeInput.trim().replace(/[-\s]/g, '');
     if (!entered) {
       setAccessCodeError('Please enter your 6-digit Access Code.');
       return;
@@ -64,7 +64,18 @@ export default function ContractPageView({ initialContract }: ContractPageViewPr
     setIsVerifyingCode(true);
 
     try {
-      const res = await verifyContractAccessCodeAction(contract.lead_id, entered);
+      // 1. Direct validation against initialContract props (instant & resilient)
+      const currentPropCode = (contract.access_code || '').trim().replace(/[-\s]/g, '');
+      if (currentPropCode && entered.toLowerCase() === currentPropCode.toLowerCase()) {
+        setIsUnlocked(true);
+        if (typeof window !== 'undefined') {
+          sessionStorage.setItem(`contract_unlocked_${contract.id}`, entered);
+        }
+        return;
+      }
+
+      // 2. Server-side validation (in case admin regenerated PIN)
+      const res = await verifyContractAccessCodeAction(contract.lead_id || contract.id, entered);
       if (res.valid) {
         setIsUnlocked(true);
         if (typeof window !== 'undefined') {
@@ -180,7 +191,7 @@ export default function ContractPageView({ initialContract }: ContractPageViewPr
                       setAccessCodeInput(e.target.value.toUpperCase());
                       setAccessCodeError(null);
                     }}
-                    placeholder="e.g. 849201"
+                    placeholder="Enter 6-digit PIN"
                     maxLength={10}
                     autoFocus
                     className="w-full px-4 py-3 bg-zinc-950 border border-zinc-700 focus:border-emerald-500 rounded-xl text-center text-xl font-mono font-bold tracking-widest text-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 transition-all placeholder:text-zinc-600 uppercase"

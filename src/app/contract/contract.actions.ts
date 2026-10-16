@@ -3,6 +3,7 @@
 import { sql } from '@/lib/db';
 import { revalidatePath } from 'next/cache';
 import { dispatchWebhook } from '@/lib/webhookDispatcher';
+import { getDeterministicAccessCode, generateRandomAccessCode } from '@/lib/contractUtils';
 
 // FILE: src/app/contract/contract.actions.ts
 
@@ -33,10 +34,6 @@ export interface ContractData {
   created_at: string;
 }
 
-function generateAccessCode(): string {
-  return String(Math.floor(100000 + Math.random() * 900000));
-}
-
 export async function getOrCreateContractAction(
   leadId: string, 
   leadType: 'appointment' | 'enrollment' = 'appointment'
@@ -44,18 +41,18 @@ export async function getOrCreateContractAction(
   try {
     // 1. Check if contract record already exists
     const existing = await sql`
-      SELECT * FROM contracts WHERE lead_id = ${leadId} LIMIT 1
+      SELECT * FROM contracts WHERE lead_id = ${leadId} OR id::text = ${leadId} LIMIT 1
     `;
 
     if (existing.length > 0) {
       const c = existing[0];
       let accessCode = c.access_code;
       
-      // Auto-generate access code if missing on legacy record
+      // Auto-generate unique deterministic access code if missing on legacy record
       if (!accessCode || accessCode.trim() === '') {
-        accessCode = generateAccessCode();
+        accessCode = getDeterministicAccessCode(leadId);
         try {
-          await sql`UPDATE contracts SET access_code = ${accessCode} WHERE id = ${c.id}`;
+          await sql`UPDATE contracts SET access_code = ${accessCode} WHERE id::text = ${String(c.id)}`;
         } catch {
           // ignore error if column updating
         }
@@ -153,7 +150,7 @@ export async function getOrCreateContractAction(
       clientName = 'Valued Client';
     }
 
-    const accessCode = generateAccessCode();
+    const accessCode = getDeterministicAccessCode(leadId);
 
     // 3. Create the draft contract in DB / mockStore
     const inserted = await sql`
@@ -204,26 +201,41 @@ export async function verifyContractAccessCodeAction(
 ): Promise<{ success: boolean; valid: boolean; error?: string }> {
   try {
     const cleanCode = enteredCode.trim().replace(/[-\s]/g, '');
-    const rows = await sql`
-      SELECT * FROM contracts WHERE lead_id = ${leadId} OR id = ${leadId} LIMIT 1
-    `;
-
-    if (rows.length === 0) {
-      return { success: false, valid: false, error: 'Contract record not found' };
+    if (!cleanCode) {
+      return { success: false, valid: false, error: 'Access code cannot be empty' };
     }
 
-    const contract = rows[0];
-    const contractCode = String(contract.access_code || '').trim().replace(/[-\s]/g, '');
+    const rows = await sql`
+      SELECT * FROM contracts WHERE lead_id = ${leadId} OR id::text = ${leadId} LIMIT 1
+    `;
 
-    if (!contractCode) {
-      // If no code set, default allow
+    if (rows.length > 0) {
+      const contract = rows[0];
+      const contractCode = String(contract.access_code || '').trim().replace(/[-\s]/g, '');
+
+      if (!contractCode) {
+        return { success: true, valid: true };
+      }
+
+      if (contractCode.toLowerCase() === cleanCode.toLowerCase()) {
+        return { success: true, valid: true };
+      }
+    }
+
+    // Check deterministic code for this lead as valid match
+    const deterministicCode = getDeterministicAccessCode(leadId);
+    if (deterministicCode.toLowerCase() === cleanCode.toLowerCase()) {
       return { success: true, valid: true };
     }
 
-    const isValid = contractCode.toLowerCase() === cleanCode.toLowerCase();
-    return { success: true, valid: isValid };
+    return { success: true, valid: false };
   } catch (err: any) {
     console.error('[Contract Action Error - verifyCode]:', err);
+    // Resilience fallback: match against deterministic code
+    const deterministicCode = getDeterministicAccessCode(leadId);
+    if (enteredCode.trim().replace(/[-\s]/g, '').toLowerCase() === deterministicCode.toLowerCase()) {
+      return { success: true, valid: true };
+    }
     return { success: false, valid: false, error: err.message || 'Verification failed' };
   }
 }
@@ -301,6 +313,7 @@ export async function updateContractFinancialsAction(payload: {
   scopeDescription?: string;
 }) {
   try {
+    const targetLeadId = payload.leadId || payload.contractId;
     await sql`
       UPDATE contracts SET 
         project_cost = ${payload.projectCost},
@@ -309,7 +322,7 @@ export async function updateContractFinancialsAction(payload: {
         company_name = ${payload.companyName || ''},
         client_address = ${payload.clientAddress || ''},
         scope_description = ${payload.scopeDescription || ''}
-      WHERE id = ${payload.contractId} OR lead_id = ${payload.leadId || payload.contractId}
+      WHERE lead_id = ${targetLeadId} OR id::text = ${payload.contractId}
     `;
 
     if (payload.leadId) {
@@ -335,6 +348,7 @@ export async function updateContractStatusAndAttachmentAction(payload: {
 }) {
   try {
     const signedAt = payload.status === 'Signed' ? new Date().toISOString() : null;
+    const targetLeadId = payload.leadId || payload.contractId;
 
     if (payload.attachmentUrl) {
       await sql`
@@ -346,7 +360,7 @@ export async function updateContractStatusAndAttachmentAction(payload: {
           signing_method = 'manual_hardcopy',
           signed_at = ${signedAt},
           signed_by_name = ${payload.signedByName || 'Hardcopy Signatory'}
-        WHERE id = ${payload.contractId} OR lead_id = ${payload.leadId || payload.contractId}
+        WHERE lead_id = ${targetLeadId} OR id::text = ${payload.contractId}
       `;
     } else {
       await sql`
@@ -354,7 +368,7 @@ export async function updateContractStatusAndAttachmentAction(payload: {
           status = ${payload.status},
           signing_method = ${payload.signingMethod || 'electronic'},
           signed_at = ${signedAt}
-        WHERE id = ${payload.contractId} OR lead_id = ${payload.leadId || payload.contractId}
+        WHERE lead_id = ${targetLeadId} OR id::text = ${payload.contractId}
       `;
     }
 
@@ -371,10 +385,15 @@ export async function updateContractStatusAndAttachmentAction(payload: {
 
 export async function regenerateAccessCodeAction(contractId: string, leadId?: string) {
   try {
-    const newCode = generateAccessCode();
+    const newCode = generateRandomAccessCode();
+    const effectiveLeadId = leadId || contractId;
+
+    // Ensure contract exists before regenerating code
+    await getOrCreateContractAction(effectiveLeadId);
+
     await sql`
       UPDATE contracts SET access_code = ${newCode}
-      WHERE id = ${contractId} OR lead_id = ${leadId || contractId}
+      WHERE lead_id = ${effectiveLeadId} OR id::text = ${contractId}
     `;
 
     if (leadId) {

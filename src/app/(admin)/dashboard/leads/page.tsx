@@ -1,6 +1,7 @@
 import { sql } from '@/lib/db';
 import LeadsCommandCenter from '@/components/admin/leads/LeadsCommandCenter';
 import { UnifiedLead } from '@/components/admin/leads/types';
+import { getDeterministicAccessCode } from '@/lib/contractUtils';
 
 // FILE: src/app/(admin)/dashboard/leads/page.tsx
 
@@ -101,7 +102,7 @@ export default async function LeadsCommandCenterPage() {
       // Contract metadata
       contractId: c ? String(c.id) : undefined,
       contractStatus: c ? (c.status as any) : 'Draft',
-      contractAccessCode: c ? c.access_code : undefined,
+      contractAccessCode: c?.access_code || getDeterministicAccessCode(String(a.id)),
       contractCost: c ? Number(c.project_cost) : 50000,
       contractCurrency: c ? c.currency : 'PHP',
       contractDownpaymentPct: c ? Number(c.downpayment_percentage ?? 50) : 50,
@@ -149,7 +150,7 @@ export default async function LeadsCommandCenterPage() {
       // Contract metadata
       contractId: c ? String(c.id) : undefined,
       contractStatus: c ? (c.status as any) : 'Draft',
-      contractAccessCode: c ? c.access_code : undefined,
+      contractAccessCode: c?.access_code || getDeterministicAccessCode(String(e.id)),
       contractCost: c ? Number(c.project_cost) : (e.class_price ? Number(e.class_price) : 25000),
       contractCurrency: c ? c.currency : 'PHP',
       contractDownpaymentPct: c ? Number(c.downpayment_percentage ?? 50) : 50,

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import * as Icons from 'lucide-react';
 import { UnifiedLead } from './types';
 import { LeadTypeBadge, LeadStatusBadge } from './LeadStatusBadge';
+import { getDeterministicAccessCode } from '@/lib/contractUtils';
 
 // FILE: src/components/admin/leads/LeadsTable.tsx
 
@@ -60,7 +61,7 @@ export default function LeadsTable({ leads, onSelectLead }: LeadsTableProps) {
 
               const isContractSigned = lead.contractStatus === 'Signed';
               const currSymbol = lead.contractCurrency === 'PHP' ? '₱' : '$';
-              const accessCode = lead.contractAccessCode || '849201';
+              const accessCode = lead.contractAccessCode || getDeterministicAccessCode(lead.id);
 
               return (
                 <tr 
