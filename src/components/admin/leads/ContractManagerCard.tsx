@@ -6,7 +6,8 @@ import { UnifiedLead } from './types';
 import { 
   updateContractFinancialsAction, 
   updateContractStatusAndAttachmentAction,
-  regenerateAccessCodeAction
+  regenerateAccessCodeAction,
+  toggleContractEsignAction
 } from '@/app/contract/contract.actions';
 import { getDeterministicAccessCode } from '@/lib/contractUtils';
 
@@ -26,6 +27,7 @@ export default function ContractManagerCard({ lead, onRefresh }: ContractManager
   const [currency, setCurrency] = useState<'PHP' | 'USD'>((lead.contractCurrency as any) || 'PHP');
   const [companyName, setCompanyName] = useState<string>(lead.companyName || '');
   const [clientAddress, setClientAddress] = useState<string>(lead.address || '');
+  const [esignEnabled, setEsignEnabled] = useState<boolean>(lead.contractEsignEnabled !== false);
 
   // Access Code State
   const [accessCode, setAccessCode] = useState<string>(
@@ -56,6 +58,7 @@ export default function ContractManagerCard({ lead, onRefresh }: ContractManager
     setCurrency((lead.contractCurrency as any) || 'PHP');
     setCompanyName(lead.companyName || '');
     setClientAddress(lead.address || '');
+    setEsignEnabled(lead.contractEsignEnabled !== false);
     setContractStatus((lead.contractStatus as any) || 'Draft');
     setAttachmentUrl(lead.contractAttachmentUrl || null);
     setAttachmentName(lead.contractAttachmentName || null);
@@ -67,6 +70,7 @@ export default function ContractManagerCard({ lead, onRefresh }: ContractManager
     lead.contractCurrency, 
     lead.companyName, 
     lead.address, 
+    lead.contractEsignEnabled,
     lead.contractStatus, 
     lead.contractAttachmentUrl, 
     lead.contractAttachmentName
@@ -120,14 +124,35 @@ export default function ContractManagerCard({ lead, onRefresh }: ContractManager
         downpaymentPercentage: Number(downpaymentPct) || 50,
         currency,
         companyName,
-        clientAddress
+        clientAddress,
+        esignEnabled
       });
 
       if (res.success) {
-        setFeedback({ type: 'success', message: 'Contract financials updated successfully!' });
+        setFeedback({ type: 'success', message: 'Contract terms and signing permissions saved successfully!' });
         onRefresh();
       } else {
         setFeedback({ type: 'error', message: res.error || 'Failed to update contract terms' });
+      }
+      setTimeout(() => setFeedback(null), 3500);
+    });
+  };
+
+  const handleToggleEsign = (newVal: boolean) => {
+    setEsignEnabled(newVal);
+    setFeedback(null);
+    startTransition(async () => {
+      const res = await toggleContractEsignAction(lead.id, newVal);
+      if (res.success) {
+        setFeedback({ 
+          type: 'success', 
+          message: newVal 
+            ? 'Electronic Signature (e-Sign) ENABLED for this contract.' 
+            : 'Electronic Signature DISABLED. Contract configured for Face-to-Face physical signing.' 
+        });
+        onRefresh();
+      } else {
+        setFeedback({ type: 'error', message: res.error || 'Failed to update e-sign setting' });
       }
       setTimeout(() => setFeedback(null), 3500);
     });
@@ -217,9 +242,17 @@ export default function ContractManagerCard({ lead, onRefresh }: ContractManager
                   {contractStatus === 'Sent' ? 'Sent to Client' : 'Draft Prepared'}
                 </span>
               )}
+              <span className={`px-2 py-0.5 rounded-full font-bold text-[10px] flex items-center gap-1 border ${
+                esignEnabled 
+                  ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30' 
+                  : 'bg-amber-500/10 text-amber-300 border-amber-500/30'
+              }`}>
+                {esignEnabled ? <Icons.FileSignature size={10} /> : <Icons.Users size={10} />}
+                {esignEnabled ? 'e-Sign Active' : 'Face-to-Face Only'}
+              </span>
             </div>
             <p className="text-xs text-zinc-400 mt-0.5">
-              Configure project cost, downpayment percentage, currency, and access code.
+              Configure project cost, downpayment percentage, company name, e-sign permissions, and access code.
             </p>
           </div>
         </div>
@@ -455,6 +488,66 @@ export default function ContractManagerCard({ lead, onRefresh }: ContractManager
                 placeholder="e.g. Legazpi City, Albay, Philippines"
                 className="w-full px-3 py-2 bg-zinc-950 border border-zinc-700 text-white rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500"
               />
+            </div>
+          </div>
+
+          {/* E-Signature vs Face-to-Face Physical Signing Permission Switch */}
+          <div className="p-4 bg-zinc-950 rounded-2xl border border-zinc-800 space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+                  esignEnabled ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'
+                }`}>
+                  {esignEnabled ? <Icons.FileSignature size={18} /> : <Icons.Users size={18} />}
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-white block">
+                      Client Signing Method: {esignEnabled ? 'Electronic Signature (e-Sign)' : 'Face-to-Face Hardcopy Only'}
+                    </span>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                      esignEnabled ? 'bg-emerald-500/20 text-emerald-300' : 'bg-amber-500/20 text-amber-300'
+                    }`}>
+                      {esignEnabled ? 'Online Active' : 'In-Person Only'}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-zinc-400 mt-0.5 leading-relaxed">
+                    {esignEnabled 
+                      ? 'Client can access the contract with PIN and submit digital signatures online.' 
+                      : 'E-sign is disabled. Client is guided to print/download the contract and sign with pen in-person.'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Direct Toggle Pills */}
+              <div className="flex items-center gap-2 shrink-0 self-start sm:self-center">
+                <button
+                  type="button"
+                  onClick={() => handleToggleEsign(true)}
+                  disabled={isPending}
+                  className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                    esignEnabled 
+                      ? 'bg-emerald-600 text-white shadow-md ring-1 ring-emerald-400' 
+                      : 'bg-zinc-900 border border-zinc-700 text-zinc-400 hover:text-white'
+                  }`}
+                >
+                  <Icons.Check size={13} />
+                  <span>Enable e-Sign</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleToggleEsign(false)}
+                  disabled={isPending}
+                  className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                    !esignEnabled 
+                      ? 'bg-amber-600 text-white shadow-md ring-1 ring-amber-400' 
+                      : 'bg-zinc-900 border border-zinc-700 text-zinc-400 hover:text-white'
+                  }`}
+                >
+                  <Icons.Users size={13} />
+                  <span>Face-to-Face Only</span>
+                </button>
+              </div>
             </div>
           </div>
 

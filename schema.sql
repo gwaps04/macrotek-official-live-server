@@ -414,6 +414,7 @@ CREATE TABLE IF NOT EXISTS contracts (
   attachment_name TEXT,
   attachment_type TEXT,
   signing_method TEXT DEFAULT 'electronic',
+  esign_enabled BOOLEAN NOT NULL DEFAULT true,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
@@ -424,6 +425,7 @@ ALTER TABLE contracts ADD COLUMN IF NOT EXISTS attachment_url TEXT;
 ALTER TABLE contracts ADD COLUMN IF NOT EXISTS attachment_name TEXT;
 ALTER TABLE contracts ADD COLUMN IF NOT EXISTS attachment_type TEXT;
 ALTER TABLE contracts ADD COLUMN IF NOT EXISTS signing_method TEXT DEFAULT 'electronic';
+ALTER TABLE contracts ADD COLUMN IF NOT EXISTS esign_enabled BOOLEAN DEFAULT true;
 
 CREATE INDEX IF NOT EXISTS idx_contracts_lead_id ON contracts(lead_id);
 CREATE INDEX IF NOT EXISTS idx_contracts_access_code ON contracts(access_code);

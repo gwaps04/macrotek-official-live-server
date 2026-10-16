@@ -31,6 +31,20 @@ export default function LeadsCommandCenter({ initialLeads }: LeadsCommandCenterP
   // Active modal lead
   const [selectedLead, setSelectedLead] = useState<UnifiedLead | null>(null);
 
+  // Synchronize selectedLead in real-time when initialLeads update
+  useEffect(() => {
+    if (selectedLead) {
+      const updated = initialLeads.find(l => l.id === selectedLead.id);
+      if (updated) {
+        setSelectedLead(updated);
+      }
+    }
+  }, [initialLeads]);
+
+  const handleUpdateSelectedLead = (updates: Partial<UnifiedLead>) => {
+    setSelectedLead(prev => prev ? { ...prev, ...updates } : null);
+  };
+
   // Filter and Search Pipeline
   const filteredLeads = useMemo(() => {
     // Current date helpers for preset comparison

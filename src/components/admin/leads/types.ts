@@ -35,6 +35,7 @@ export interface UnifiedLead {
   contractAttachmentUrl?: string | null;
   contractAttachmentName?: string | null;
   contractSigningMethod?: 'electronic' | 'manual_hardcopy';
+  contractEsignEnabled?: boolean;
   companyName?: string;
 }
 

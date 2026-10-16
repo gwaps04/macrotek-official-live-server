@@ -31,6 +31,7 @@ export interface ContractData {
   attachment_name?: string | null;
   attachment_type?: string | null;
   signing_method?: 'electronic' | 'manual_hardcopy';
+  esign_enabled?: boolean;
   created_at: string;
 }
 
@@ -84,6 +85,7 @@ export async function getOrCreateContractAction(
           attachment_name: c.attachment_name || null,
           attachment_type: c.attachment_type || null,
           signing_method: (c.signing_method || 'electronic') as 'electronic' | 'manual_hardcopy',
+          esign_enabled: c.esign_enabled !== false,
           created_at: c.created_at || new Date().toISOString()
         }
       };
@@ -157,12 +159,12 @@ export async function getOrCreateContractAction(
       INSERT INTO contracts (
         lead_id, lead_type, client_name, company_name, 
         client_address, client_email, client_phone, 
-        project_cost, downpayment_percentage, currency, access_code, status
+        project_cost, downpayment_percentage, currency, access_code, status, esign_enabled
       )
       VALUES (
         ${leadId}, ${leadType}, ${clientName}, ${companyName},
         ${clientAddress}, ${clientEmail}, ${clientPhone},
-        ${defaultCost}, ${defaultDownpayment}, ${defaultCurrency}, ${accessCode}, 'Draft'
+        ${defaultCost}, ${defaultDownpayment}, ${defaultCurrency}, ${accessCode}, 'Draft', true
       )
       RETURNING *;
     `;
@@ -186,6 +188,7 @@ export async function getOrCreateContractAction(
         access_code: accessCode,
         status: 'Draft',
         signing_method: 'electronic',
+        esign_enabled: true,
         created_at: new Date().toISOString()
       }
     };
@@ -257,6 +260,17 @@ export async function signContractAction(payload: {
       }
     }
 
+    // Fetch the existing contract to verify e-sign is permitted
+    const checkRows = await sql`
+      SELECT * FROM contracts WHERE lead_id = ${payload.leadId} OR id::text = ${payload.leadId} LIMIT 1
+    `;
+    if (checkRows.length > 0 && checkRows[0].esign_enabled === false) {
+      return { 
+        success: false, 
+        error: 'Online electronic signature is disabled for this contract by administrator. Please sign face-to-face via hardcopy.' 
+      };
+    }
+
     const signedAt = new Date().toISOString();
 
     await sql`
@@ -268,12 +282,12 @@ export async function signContractAction(payload: {
         signed_by_title = ${payload.signedByTitle || 'Authorized Client'},
         status = 'Signed',
         signing_method = 'electronic'
-      WHERE lead_id = ${payload.leadId} OR id = ${payload.leadId}
+      WHERE lead_id = ${payload.leadId} OR id::text = ${payload.leadId}
     `;
 
     // Fetch the updated contract to dispatch webhook to n8n / ClickUp
     const rows = await sql`
-      SELECT * FROM contracts WHERE lead_id = ${payload.leadId} OR id = ${payload.leadId} LIMIT 1
+      SELECT * FROM contracts WHERE lead_id = ${payload.leadId} OR id::text = ${payload.leadId} LIMIT 1
     `;
     const contract = rows[0];
 
@@ -305,15 +319,23 @@ export async function signContractAction(payload: {
 export async function updateContractFinancialsAction(payload: {
   contractId: string;
   leadId?: string;
+  leadType?: 'appointment' | 'enrollment';
   projectCost: number;
   downpaymentPercentage: number;
   currency: 'PHP' | 'USD';
   companyName?: string;
   clientAddress?: string;
   scopeDescription?: string;
+  esignEnabled?: boolean;
 }) {
   try {
     const targetLeadId = payload.leadId || payload.contractId;
+
+    // 1. Ensure contract record exists in DB first (so update is never dropped)
+    await getOrCreateContractAction(targetLeadId, payload.leadType || 'appointment');
+
+    const esignVal = payload.esignEnabled !== undefined ? payload.esignEnabled : true;
+
     await sql`
       UPDATE contracts SET 
         project_cost = ${payload.projectCost},
@@ -321,7 +343,8 @@ export async function updateContractFinancialsAction(payload: {
         currency = ${payload.currency},
         company_name = ${payload.companyName || ''},
         client_address = ${payload.clientAddress || ''},
-        scope_description = ${payload.scopeDescription || ''}
+        scope_description = ${payload.scopeDescription || ''},
+        esign_enabled = ${esignVal}
       WHERE lead_id = ${targetLeadId} OR id::text = ${payload.contractId}
     `;
 
@@ -406,3 +429,22 @@ export async function regenerateAccessCodeAction(contractId: string, leadId?: st
     return { success: false, error: err.message || 'Failed to regenerate code' };
   }
 }
+
+export async function toggleContractEsignAction(leadId: string, enabled: boolean) {
+  try {
+    await getOrCreateContractAction(leadId);
+
+    await sql`
+      UPDATE contracts SET esign_enabled = ${enabled}
+      WHERE lead_id = ${leadId} OR id::text = ${leadId}
+    `;
+
+    revalidatePath(`/contract/${leadId}`);
+    revalidatePath('/dashboard/leads');
+    return { success: true, esign_enabled: enabled };
+  } catch (err: any) {
+    console.error('[Contract Action Error - toggleEsign]:', err);
+    return { success: false, error: err.message || 'Failed to toggle e-sign status' };
+  }
+}
+

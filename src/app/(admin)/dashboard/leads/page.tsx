@@ -112,6 +112,7 @@ export default async function LeadsCommandCenterPage() {
       contractAttachmentUrl: c ? c.attachment_url : null,
       contractAttachmentName: c ? c.attachment_name : null,
       contractSigningMethod: c ? c.signing_method : 'electronic',
+      contractEsignEnabled: c ? c.esign_enabled !== false : true,
       companyName: c?.company_name || extractedCompany || ''
     };
   });
@@ -160,6 +161,7 @@ export default async function LeadsCommandCenterPage() {
       contractAttachmentUrl: c ? c.attachment_url : null,
       contractAttachmentName: c ? c.attachment_name : null,
       contractSigningMethod: c ? c.signing_method : 'electronic',
+      contractEsignEnabled: c ? c.esign_enabled !== false : true,
       companyName: c?.company_name || ''
     };
   });

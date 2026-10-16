@@ -463,6 +463,7 @@ function createInitialStore(): MockStore {
         attachment_name: null,
         attachment_type: null,
         signing_method: 'electronic',
+        esign_enabled: true,
         created_at: new Date(Date.now() - 3600000 * 2).toISOString(),
         updated_at: new Date(Date.now() - 3600000 * 2).toISOString()
       },
@@ -491,6 +492,7 @@ function createInitialStore(): MockStore {
         attachment_name: null,
         attachment_type: null,
         signing_method: 'electronic',
+        esign_enabled: true,
         created_at: new Date(Date.now() - 3600000 * 18).toISOString(),
         updated_at: new Date(Date.now() - 3600000 * 18).toISOString()
       },
@@ -519,6 +521,7 @@ function createInitialStore(): MockStore {
         attachment_name: null,
         attachment_type: null,
         signing_method: 'electronic',
+        esign_enabled: true,
         created_at: new Date(Date.now() - 3600000 * 4).toISOString(),
         updated_at: new Date(Date.now() - 3600000 * 4).toISOString()
       }
@@ -1075,92 +1078,172 @@ function processMockQuery(strings: TemplateStringsArray | string | string[], val
   if (/FROM contracts/i.test(normalized)) {
     if (/^INSERT INTO contracts/i.test(normalized)) {
       const generatedCode = String(Math.floor(100000 + Math.random() * 900000));
-      const item = {
+      const item: Record<string, any> = {
         id: crypto.randomUUID(),
-        lead_id: values[0],
-        lead_type: values[1] || 'appointment',
-        client_name: values[2] || '',
-        company_name: values[3] || '',
-        client_address: values[4] || '',
-        client_email: values[5] || '',
-        client_phone: values[6] || '',
-        project_cost: Number(values[7]) || 1500,
-        downpayment_percentage: Number(values[8]) || 50,
-        currency: values[9] || 'PHP',
-        access_code: values[10] || generatedCode,
-        scope_description: values[11] || '',
-        status: values[12] || 'Draft',
-        signature_data: values[13] || null,
-        signature_type: values[14] || 'drawn',
-        signed_at: values[15] || null,
-        signed_by_name: values[16] || null,
-        signed_by_title: values[17] || null,
-        signed_ip: values[18] || null,
-        attachment_url: values[19] || null,
-        attachment_name: values[20] || null,
-        attachment_type: values[21] || null,
-        signing_method: values[22] || 'electronic',
+        lead_id: values[0] || 'unknown',
+        lead_type: 'appointment',
+        client_name: '',
+        company_name: '',
+        client_address: '',
+        client_email: '',
+        client_phone: '',
+        project_cost: 50000,
+        downpayment_percentage: 50,
+        currency: 'PHP',
+        access_code: generatedCode,
+        scope_description: '',
+        status: 'Draft',
+        signature_data: null,
+        signature_type: 'drawn',
+        signed_at: null,
+        signed_by_name: null,
+        signed_by_title: null,
+        signed_ip: null,
+        attachment_url: null,
+        attachment_name: null,
+        attachment_type: null,
+        signing_method: 'electronic',
+        esign_enabled: true,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       };
+
+      // Smart column-based mapping from SQL statement
+      const insertMatch = normalized.match(/INSERT\s+INTO\s+contracts\s*\((.*?)\)\s*VALUES\s*\((.*?)\)/i);
+      if (insertMatch) {
+        const cols = insertMatch[1].split(',').map(s => s.trim().toLowerCase());
+        const rawVals = insertMatch[2].split(',').map(s => s.trim());
+        cols.forEach((col, idx) => {
+          const expr = rawVals[idx];
+          if (!expr) return;
+          const paramMatch = expr.match(/^__VAL_(\d+)__$/i);
+          let val: any = paramMatch ? values[parseInt(paramMatch[1], 10)] : expr.replace(/^['"]|['"]$/g, '');
+          if (val === 'true') val = true;
+          if (val === 'false') val = false;
+
+          if (col === 'project_cost') item.project_cost = Number(val) || 0;
+          else if (col === 'downpayment_percentage') item.downpayment_percentage = Number(val) ?? 50;
+          else if (col === 'esign_enabled') item.esign_enabled = Boolean(val);
+          else (item as any)[col] = val;
+        });
+      }
+
       mockStore.contracts.push(item);
       return [item];
     }
+
     if (/^UPDATE contracts SET/i.test(normalized)) {
-      const targetId1 = values[values.length - 1];
-      const targetId2 = values[values.length - 2];
-      const c = mockStore.contracts.find(x => 
-        x.id === targetId1 || x.lead_id === targetId1 ||
-        (targetId2 && (x.id === targetId2 || x.lead_id === targetId2))
+      // Find matching contract across all parameters after the WHERE clause
+      const whereIdx = fullSql.toUpperCase().indexOf('WHERE');
+      const whereSql = whereIdx !== -1 ? fullSql.slice(whereIdx) : '';
+      const whereParamIndices = Array.from(whereSql.matchAll(/__VAL_(\d+)__/g)).map(m => parseInt(m[1], 10));
+      const targetIds = whereParamIndices.map(idx => String(values[idx]));
+
+      // Fallback: also check last two values in case query is structured differently
+      if (values.length > 0) {
+        targetIds.push(String(values[values.length - 1]));
+        if (values.length > 1) targetIds.push(String(values[values.length - 2]));
+      }
+
+      let c = mockStore.contracts.find(x => 
+        targetIds.includes(String(x.id)) || targetIds.includes(String(x.lead_id))
       );
+
+      // If contract not found in mock store, auto-initialize it so update is never dropped
+      if (!c && targetIds.length > 0) {
+        const primaryId = targetIds[0] || 'lead-init';
+        c = {
+          id: targetIds[1] || crypto.randomUUID(),
+          lead_id: primaryId,
+          lead_type: 'appointment',
+          client_name: 'Valued Client',
+          company_name: '',
+          client_address: '',
+          client_email: '',
+          client_phone: '',
+          project_cost: 50000,
+          downpayment_percentage: 50,
+          currency: 'PHP',
+          access_code: String(Math.floor(100000 + Math.random() * 900000)),
+          status: 'Draft',
+          esign_enabled: true,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+        mockStore.contracts.push(c);
+      }
+
       if (c) {
         c.updated_at = new Date().toISOString();
-        if (/status\s*=\s*/i.test(normalized)) {
-          const statusMatch = normalized.match(/status\s*=\s*['"]?([^'",\s]+)/i);
-          if (statusMatch && statusMatch[1]) {
-            c.status = statusMatch[1];
-          } else if (values.length > 0) {
-            c.status = values[0] || c.status;
+
+        // 1. Parameterized assignments: preceding queryParts[i] ending with "field = "
+        for (let i = 0; i < values.length; i++) {
+          const preceding = queryParts[i] || '';
+          if (/WHERE/i.test(preceding)) continue;
+          const match = preceding.match(/([a-zA-Z0-9_]+)\s*=\s*$/);
+          if (match) {
+            const field = match[1].toLowerCase();
+            const val = values[i];
+            if (field === 'project_cost') c.project_cost = Number(val) || 0;
+            else if (field === 'downpayment_percentage') c.downpayment_percentage = Number(val) ?? 50;
+            else if (field === 'currency') c.currency = val || 'PHP';
+            else if (field === 'company_name') c.company_name = String(val || '');
+            else if (field === 'client_address') c.client_address = String(val || '');
+            else if (field === 'scope_description') c.scope_description = String(val || '');
+            else if (field === 'access_code') c.access_code = String(val);
+            else if (field === 'status') c.status = val;
+            else if (field === 'esign_enabled') c.esign_enabled = Boolean(val);
+            else if (field === 'attachment_url') c.attachment_url = val;
+            else if (field === 'attachment_name') c.attachment_name = val;
+            else if (field === 'attachment_type') c.attachment_type = val;
+            else if (field === 'signing_method') c.signing_method = val;
+            else if (field === 'signature_data') c.signature_data = val;
+            else if (field === 'signature_type') c.signature_type = val;
+            else if (field === 'signed_at') c.signed_at = val;
+            else if (field === 'signed_by_name') c.signed_by_name = val;
+            else if (field === 'signed_by_title') c.signed_by_title = val;
           }
         }
-        if (/signature_data\s*=\s*/i.test(normalized)) {
-          c.signature_data = values[0];
-          c.signature_type = values[1] || 'drawn';
-          c.signed_at = values[2] || new Date().toISOString();
-          c.signed_by_name = values[3] || c.client_name;
-          c.signed_by_title = values[4] || 'Client';
-          c.status = 'Signed';
-          c.signing_method = 'electronic';
+
+        // 2. Fallback: Parse SET assignments in normalized fullSql
+        const setIdx = fullSql.toUpperCase().indexOf('SET');
+        const setSql = setIdx !== -1 
+          ? (whereIdx !== -1 ? fullSql.slice(setIdx, whereIdx) : fullSql.slice(setIdx))
+          : '';
+        const assignments = setSql.replace(/^SET\s+/i, '').split(',').map(s => s.trim());
+        for (const assign of assignments) {
+          const parts = assign.split('=').map(s => s.trim());
+          if (parts.length === 2) {
+            const field = parts[0].toLowerCase();
+            const valExpr = parts[1];
+            const paramMatch = valExpr.match(/^(?:__VAL_|\$)(\d+)(?:__)?$/i);
+            let val: any;
+            if (paramMatch) {
+              const paramIdx = parseInt(paramMatch[1], 10) - (paramMatch[0].startsWith('$') ? 1 : 0);
+              val = values[paramIdx];
+            } else {
+              val = valExpr.replace(/^['"]|['"]$/g, '');
+              if (val.toLowerCase() === 'true') val = true;
+              if (val.toLowerCase() === 'false') val = false;
+            }
+
+            if (field === 'project_cost' && val !== undefined) c.project_cost = Number(val) || 0;
+            else if (field === 'downpayment_percentage' && val !== undefined) c.downpayment_percentage = Number(val) ?? 50;
+            else if (field === 'currency' && val) c.currency = val;
+            else if (field === 'company_name' && val !== undefined) c.company_name = String(val);
+            else if (field === 'client_address' && val !== undefined) c.client_address = String(val);
+            else if (field === 'scope_description' && val !== undefined) c.scope_description = String(val);
+            else if (field === 'access_code' && val) c.access_code = String(val);
+            else if (field === 'status' && val) c.status = val;
+            else if (field === 'esign_enabled' && val !== undefined) c.esign_enabled = Boolean(val);
+          }
         }
-        if (/attachment_url\s*=\s*/i.test(normalized)) {
-          c.attachment_url = values[0];
-          c.attachment_name = values[1] || 'signed-contract.pdf';
-          c.attachment_type = values[2] || 'pdf';
-          c.status = 'Signed';
-          c.signing_method = 'manual_hardcopy';
-          c.signed_at = new Date().toISOString();
-        }
-        if (/project_cost\s*=\s*/i.test(normalized)) {
-          c.project_cost = Number(values[0]) || c.project_cost;
-        }
-        if (/downpayment_percentage\s*=\s*/i.test(normalized)) {
-          c.downpayment_percentage = Number(values[0]) || c.downpayment_percentage;
-        }
-        if (/currency\s*=\s*/i.test(normalized)) {
-          c.currency = values[0] || c.currency;
-        }
-        if (/access_code\s*=\s*/i.test(normalized)) {
-          c.access_code = values[0] || c.access_code;
-        }
-        if (/company_name\s*=\s*/i.test(normalized)) {
-          c.company_name = values[0] || c.company_name;
-        }
-        if (/client_address\s*=\s*/i.test(normalized)) {
-          c.client_address = values[0] || c.client_address;
-        }
+
+        return [c];
       }
-      return c ? [c] : [];
+      return [];
     }
+
     if (/WHERE lead_id =/i.test(normalized)) {
       const leadId = values[0];
       const list = mockStore.contracts.filter(c => c.lead_id === leadId || c.id === leadId);
@@ -1179,17 +1262,21 @@ function processMockQuery(strings: TemplateStringsArray | string | string[], val
         }
         if (c.downpayment_percentage === undefined) c.downpayment_percentage = 50;
         if (!c.currency) c.currency = 'PHP';
+        if (c.esign_enabled === undefined) c.esign_enabled = true;
       });
       return list;
     }
+
     if (/WHERE access_code =/i.test(normalized)) {
       const code = values[0];
       return mockStore.contracts.filter(c => String(c.access_code).trim().toLowerCase() === String(code).trim().toLowerCase());
     }
+
     if (/WHERE id =/i.test(normalized)) {
       const id = values[0];
       return mockStore.contracts.filter(c => c.id === id);
     }
+
     return mockStore.contracts.slice().sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
   }
 
