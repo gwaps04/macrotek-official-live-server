@@ -1,8 +1,7 @@
+// FILE: next.config.ts
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Vercel handles serverless tracing natively; standalone causes ENOENT nft.json collision on Vercel
-  ...(process.env.BUILD_STANDALONE === 'true' && !process.env.VERCEL ? { output: 'standalone' } : {}),
   allowedDevOrigins: ['*.run.app', 'localhost:3000'],
   turbopack: {
     root: process.cwd(),
