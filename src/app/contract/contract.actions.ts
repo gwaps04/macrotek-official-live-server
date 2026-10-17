@@ -1,6 +1,6 @@
 "use server";
 
-import { sql } from '@/lib/db';
+import { sql, ensureContractsSchema } from '@/lib/db';
 import { revalidatePath } from 'next/cache';
 import { dispatchWebhook } from '@/lib/webhookDispatcher';
 import { getDeterministicAccessCode, generateRandomAccessCode } from '@/lib/contractUtils';
@@ -16,11 +16,14 @@ export interface ContractData {
   client_address: string;
   client_email: string;
   client_phone: string;
-  project_cost: number;
-  downpayment_percentage: number;
-  currency: 'PHP' | 'USD' | string;
+  contract_title?: string;
+  project_cost?: number | null;
+  downpayment_percentage?: number | null;
+  currency?: string;
   access_code: string;
   scope_description?: string;
+  custom_terms?: string;
+  payment_terms_notes?: string;
   status: 'Draft' | 'Sent' | 'Signed';
   signature_data?: string | null;
   signature_type?: 'drawn' | 'typed';
@@ -40,6 +43,9 @@ export async function getOrCreateContractAction(
   leadType: 'appointment' | 'enrollment' = 'appointment'
 ): Promise<{ success: boolean; contract?: ContractData; error?: string }> {
   try {
+    // 0. Ensure schema is synchronized against Neon DB
+    await ensureContractsSchema().catch(() => {});
+
     // 1. Check if contract record already exists
     const existing = await sql`
       SELECT * FROM contracts WHERE lead_id = ${leadId} OR id::text = ${leadId} LIMIT 1
@@ -50,7 +56,7 @@ export async function getOrCreateContractAction(
       let accessCode = c.access_code;
       
       // Auto-generate unique deterministic access code if missing on legacy record
-      if (!accessCode || accessCode.trim() === '') {
+      if (!accessCode || String(accessCode).trim() === '') {
         accessCode = getDeterministicAccessCode(leadId);
         try {
           await sql`UPDATE contracts SET access_code = ${accessCode} WHERE id::text = ${String(c.id)}`;
@@ -70,16 +76,19 @@ export async function getOrCreateContractAction(
           client_address: c.client_address || '',
           client_email: c.client_email || '',
           client_phone: c.client_phone || '',
-          project_cost: Number(c.project_cost) || 50000,
-          downpayment_percentage: Number(c.downpayment_percentage ?? 50),
-          currency: (c.currency || 'PHP') as 'PHP' | 'USD',
+          contract_title: c.contract_title || c.project_title || 'Master Service Agreement',
+          project_cost: c.project_cost !== null && c.project_cost !== undefined && c.project_cost !== '' && !isNaN(Number(c.project_cost)) ? Number(c.project_cost) : null,
+          downpayment_percentage: c.downpayment_percentage !== null && c.downpayment_percentage !== undefined && c.downpayment_percentage !== '' && !isNaN(Number(c.downpayment_percentage)) ? Number(c.downpayment_percentage) : null,
+          currency: c.currency || '',
           access_code: accessCode,
           scope_description: c.scope_description || '',
+          custom_terms: c.custom_terms || '',
+          payment_terms_notes: c.payment_terms_notes || '',
           status: (c.status || 'Draft') as 'Draft' | 'Sent' | 'Signed',
-          signature_data: c.signature_data || null,
+          signature_data: c.signature_data || c.signature_svg || null,
           signature_type: c.signature_type || 'drawn',
           signed_at: c.signed_at || null,
-          signed_by_name: c.signed_by_name || null,
+          signed_by_name: c.signed_by_name || c.signed_by || null,
           signed_by_title: c.signed_by_title || null,
           attachment_url: c.attachment_url || null,
           attachment_name: c.attachment_name || null,
@@ -97,9 +106,6 @@ export async function getOrCreateContractAction(
     let clientPhone = '';
     let clientAddress = '';
     let companyName = '';
-    let defaultCost = 50000;
-    const defaultCurrency: 'PHP' | 'USD' = 'PHP';
-    const defaultDownpayment = 50;
 
     const apptRows = await sql`
       SELECT * FROM appointments WHERE id = ${leadId} LIMIT 1
@@ -144,7 +150,6 @@ export async function getOrCreateContractAction(
         clientEmail = e.student_email || '';
         clientPhone = e.student_phone || '';
         clientAddress = e.student_address || '';
-        if (e.class_price) defaultCost = Number(e.class_price) || 25000;
       }
     }
 
@@ -154,27 +159,54 @@ export async function getOrCreateContractAction(
 
     const accessCode = getDeterministicAccessCode(leadId);
 
-    // 3. Create the draft contract in DB / mockStore
-    const inserted = await sql`
-      INSERT INTO contracts (
-        lead_id, lead_type, client_name, company_name, 
-        client_address, client_email, client_phone, 
-        project_cost, downpayment_percentage, currency, access_code, status, esign_enabled
-      )
-      VALUES (
-        ${leadId}, ${leadType}, ${clientName}, ${companyName},
-        ${clientAddress}, ${clientEmail}, ${clientPhone},
-        ${defaultCost}, ${defaultDownpayment}, ${defaultCurrency}, ${accessCode}, 'Draft', true
-      )
-      RETURNING *;
-    `;
+    // 3. Create the draft contract in DB / mockStore with EMPTY financials by default
+    let row: any = null;
+    try {
+      const inserted = await sql`
+        INSERT INTO contracts (
+          lead_id, lead_type, client_name, company_name, 
+          client_address, client_email, client_phone, 
+          project_title, contract_title, project_cost, downpayment_percentage, currency, 
+          access_code, scope_description, custom_terms, payment_terms_notes, status, esign_enabled
+        )
+        VALUES (
+          ${leadId}, ${leadType}, ${clientName}, ${companyName},
+          ${clientAddress}, ${clientEmail}, ${clientPhone},
+          'Master Service Agreement', 'Master Service Agreement', null, null, '', 
+          ${accessCode}, '', '', '', 'Draft', true
+        )
+        RETURNING *;
+      `;
+      row = inserted[0];
+    } catch (insertErr) {
+      console.warn('[Contract Insert Primary Warning, trying fallback]:', insertErr);
+      // Fallback: accommodates tables with legacy column definitions
+      try {
+        const fallbackInsert = await sql`
+          INSERT INTO contracts (
+            lead_id, lead_type, client_name, company_name, 
+            client_address, client_email, client_phone, 
+            project_title, contract_title, access_code, status
+          )
+          VALUES (
+            ${leadId}, ${leadType}, ${clientName}, ${companyName},
+            ${clientAddress}, ${clientEmail}, ${clientPhone},
+            'Master Service Agreement', 'Master Service Agreement', ${accessCode}, 'Draft'
+          )
+          RETURNING *;
+        `;
+        row = fallbackInsert[0];
+      } catch (fallbackErr) {
+        console.error('[Contract Insert Fallback Error]:', fallbackErr);
+      }
+    }
 
-    const row = inserted[0] || {};
+    const resolvedRow = row || {};
 
     return {
       success: true,
       contract: {
-        id: String(row.id || crypto.randomUUID()),
+        id: String(resolvedRow.id || crypto.randomUUID()),
         lead_id: leadId,
         lead_type: leadType,
         client_name: clientName,
@@ -182,10 +214,14 @@ export async function getOrCreateContractAction(
         client_address: clientAddress,
         client_email: clientEmail,
         client_phone: clientPhone,
-        project_cost: defaultCost,
-        downpayment_percentage: defaultDownpayment,
-        currency: defaultCurrency,
+        contract_title: 'Master Service Agreement',
+        project_cost: null,
+        downpayment_percentage: null,
+        currency: '',
         access_code: accessCode,
+        scope_description: '',
+        custom_terms: '',
+        payment_terms_notes: '',
         status: 'Draft',
         signing_method: 'electronic',
         esign_enabled: true,
@@ -276,9 +312,11 @@ export async function signContractAction(payload: {
     await sql`
       UPDATE contracts SET 
         signature_data = ${payload.signatureData},
+        signature_svg = ${payload.signatureData},
         signature_type = ${payload.signatureType},
         signed_at = ${signedAt},
         signed_by_name = ${payload.signedByName},
+        signed_by = ${payload.signedByName},
         signed_by_title = ${payload.signedByTitle || 'Authorized Client'},
         status = 'Signed',
         signing_method = 'electronic'
@@ -320,39 +358,101 @@ export async function updateContractFinancialsAction(payload: {
   contractId: string;
   leadId?: string;
   leadType?: 'appointment' | 'enrollment';
-  projectCost: number;
-  downpaymentPercentage: number;
-  currency: 'PHP' | 'USD';
+  projectCost?: number | null;
+  downpaymentPercentage?: number | null;
+  currency?: string;
   companyName?: string;
   clientAddress?: string;
+  contractTitle?: string;
   scopeDescription?: string;
+  customTerms?: string;
+  paymentTermsNotes?: string;
   esignEnabled?: boolean;
 }) {
   try {
     const targetLeadId = payload.leadId || payload.contractId;
 
+    // 0. Ensure schema is synchronized against Neon DB
+    await ensureContractsSchema().catch(() => {});
+
     // 1. Ensure contract record exists in DB first (so update is never dropped)
     await getOrCreateContractAction(targetLeadId, payload.leadType || 'appointment');
 
     const esignVal = payload.esignEnabled !== undefined ? payload.esignEnabled : true;
+    const projectCostVal = payload.projectCost !== undefined && payload.projectCost !== null && !isNaN(Number(payload.projectCost)) && String(payload.projectCost).trim() !== ''
+      ? Number(payload.projectCost) 
+      : null;
+    const downpaymentVal = payload.downpaymentPercentage !== undefined && payload.downpaymentPercentage !== null && !isNaN(Number(payload.downpaymentPercentage)) && String(payload.downpaymentPercentage).trim() !== ''
+      ? Number(payload.downpaymentPercentage) 
+      : null;
+    const currencyVal = payload.currency !== undefined && payload.currency !== null ? String(payload.currency).trim() : '';
+    const titleVal = payload.contractTitle || 'Master Service Agreement';
+    const scopeVal = payload.scopeDescription !== undefined && payload.scopeDescription !== null ? String(payload.scopeDescription) : '';
+    const customTermsVal = payload.customTerms !== undefined && payload.customTerms !== null ? String(payload.customTerms) : '';
+    const paymentTermsVal = payload.paymentTermsNotes !== undefined && payload.paymentTermsNotes !== null ? String(payload.paymentTermsNotes) : '';
 
-    await sql`
-      UPDATE contracts SET 
-        project_cost = ${payload.projectCost},
-        downpayment_percentage = ${payload.downpaymentPercentage},
-        currency = ${payload.currency},
-        company_name = ${payload.companyName || ''},
-        client_address = ${payload.clientAddress || ''},
-        scope_description = ${payload.scopeDescription || ''},
-        esign_enabled = ${esignVal}
-      WHERE lead_id = ${targetLeadId} OR id::text = ${payload.contractId}
-    `;
+    try {
+      await sql`
+        UPDATE contracts SET 
+          project_cost = ${projectCostVal},
+          downpayment_percentage = ${downpaymentVal},
+          currency = ${currencyVal},
+          company_name = ${payload.companyName || ''},
+          client_address = ${payload.clientAddress || ''},
+          contract_title = ${titleVal},
+          project_title = ${titleVal},
+          scope_description = ${scopeVal},
+          custom_terms = ${customTermsVal},
+          payment_terms_notes = ${paymentTermsVal},
+          esign_enabled = ${esignVal}
+        WHERE lead_id = ${targetLeadId} OR id::text = ${payload.contractId} OR id::text = ${targetLeadId}
+      `;
+    } catch (primaryUpdateErr) {
+      console.warn('[Contract Update Primary Warning, trying fallback]:', primaryUpdateErr);
+      // Fallback for tables without scope_description or esign_enabled
+      await sql`
+        UPDATE contracts SET 
+          project_cost = ${projectCostVal},
+          downpayment_percentage = ${downpaymentVal},
+          currency = ${currencyVal},
+          company_name = ${payload.companyName || ''},
+          client_address = ${payload.clientAddress || ''},
+          contract_title = ${titleVal},
+          project_title = ${titleVal},
+          custom_terms = ${customTermsVal},
+          payment_terms_notes = ${paymentTermsVal}
+        WHERE lead_id = ${targetLeadId} OR id::text = ${payload.contractId} OR id::text = ${targetLeadId}
+      `;
+    }
 
+    // Ensure immediate cache bust across all potential contract URLs
     if (payload.leadId) {
       revalidatePath(`/contract/${payload.leadId}`);
     }
+    if (payload.contractId && payload.contractId !== payload.leadId) {
+      revalidatePath(`/contract/${payload.contractId}`);
+    }
+    if (targetLeadId) {
+      revalidatePath(`/contract/${targetLeadId}`);
+    }
     revalidatePath('/dashboard/leads');
-    return { success: true };
+
+    return { 
+      success: true,
+      contract: {
+        lead_id: targetLeadId,
+        project_cost: projectCostVal,
+        downpayment_percentage: downpaymentVal,
+        currency: currencyVal,
+        contract_title: titleVal,
+        scope_description: scopeVal,
+        custom_terms: customTermsVal,
+        payment_terms_notes: paymentTermsVal,
+        company_name: payload.companyName || '',
+        client_address: payload.clientAddress || '',
+        esign_enabled: esignVal
+      }
+    };
   } catch (err: any) {
     console.error('[Contract Action Error - updateFinancials]:', err);
     return { success: false, error: err.message || 'Failed to update contract terms' };

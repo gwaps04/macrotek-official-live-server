@@ -14,6 +14,11 @@ interface ContractPageViewProps {
 
 export default function ContractPageView({ initialContract }: ContractPageViewProps) {
   const [contract, setContract] = useState<ContractData>(initialContract);
+
+  // Synchronize contract state immediately when initialContract updates (e.g. after refresh)
+  useEffect(() => {
+    setContract(initialContract);
+  }, [initialContract]);
   
   // Access Code Gate State
   const [isUnlocked, setIsUnlocked] = useState(false);
@@ -260,7 +265,7 @@ export default function ContractPageView({ initialContract }: ContractPageViewPr
             <div>
               <div className="flex items-center gap-2">
                 <span className="font-bold text-sm text-zinc-950">
-                  Master Service Agreement
+                  {contract.contract_title || 'Master Service Agreement'}
                 </span>
                 {isSigned ? (
                   <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">

@@ -26,9 +26,13 @@ export interface UnifiedLead {
   contractId?: string;
   contractStatus?: 'Draft' | 'Sent' | 'Signed' | 'None';
   contractAccessCode?: string;
-  contractCost?: number;
-  contractCurrency?: 'PHP' | 'USD' | string;
-  contractDownpaymentPct?: number;
+  contractTitle?: string;
+  contractScope?: string;
+  contractCustomTerms?: string;
+  paymentTermsNotes?: string;
+  contractCost?: number | null;
+  contractCurrency?: string;
+  contractDownpaymentPct?: number | null;
   contractSignedAt?: string | null;
   contractSignedBy?: string | null;
   contractSignedByTitle?: string | null;

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import * as Icons from 'lucide-react';
 import { UnifiedLead, FilterType, StatusFilter, DatePreset, DateTarget } from './types';
@@ -33,12 +33,11 @@ export default function LeadsCommandCenter({ initialLeads }: LeadsCommandCenterP
 
   // Synchronize selectedLead in real-time when initialLeads update
   useEffect(() => {
-    if (selectedLead) {
-      const updated = initialLeads.find(l => l.id === selectedLead.id);
-      if (updated) {
-        setSelectedLead(updated);
-      }
-    }
+    setSelectedLead(prev => {
+      if (!prev) return null;
+      const updated = initialLeads.find(l => l.id === prev.id);
+      return updated ?? prev;
+    });
   }, [initialLeads]);
 
   const handleUpdateSelectedLead = (updates: Partial<UnifiedLead>) => {
@@ -316,6 +315,7 @@ export default function LeadsCommandCenter({ initialLeads }: LeadsCommandCenterP
           lead={selectedLead}
           onClose={() => setSelectedLead(null)}
           onRefresh={() => router.refresh()}
+          onUpdateLead={handleUpdateSelectedLead}
         />
       )}
 

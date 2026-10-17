@@ -19,9 +19,10 @@ interface LeadDetailModalProps {
   lead: UnifiedLead | null;
   onClose: () => void;
   onRefresh: () => void;
+  onUpdateLead?: (updates: Partial<UnifiedLead>) => void;
 }
 
-export default function LeadDetailModal({ lead, onClose, onRefresh }: LeadDetailModalProps) {
+export default function LeadDetailModal({ lead, onClose, onRefresh, onUpdateLead }: LeadDetailModalProps) {
   const [isPending, startTransition] = useTransition();
   const [copyFeedback, setCopyFeedback] = useState<string | null>(null);
   const [webhookFeedback, setWebhookFeedback] = useState<{ success: boolean; msg: string } | null>(null);
@@ -305,7 +306,7 @@ export default function LeadDetailModal({ lead, onClose, onRefresh }: LeadDetail
           )}
 
           {/* Service Agreement & Contract Engine */}
-          <ContractManagerCard lead={lead} onRefresh={onRefresh} />
+          <ContractManagerCard lead={lead} onRefresh={onRefresh} onUpdateLead={onUpdateLead} />
 
           {/* Status & Pipeline Control */}
           <div className="p-4 bg-zinc-900 text-white rounded-2xl space-y-3">

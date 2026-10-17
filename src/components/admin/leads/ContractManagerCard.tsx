@@ -16,18 +16,37 @@ import { getDeterministicAccessCode } from '@/lib/contractUtils';
 interface ContractManagerCardProps {
   lead: UnifiedLead;
   onRefresh: () => void;
+  onUpdateLead?: (updates: Partial<UnifiedLead>) => void;
 }
 
-export default function ContractManagerCard({ lead, onRefresh }: ContractManagerCardProps) {
+export default function ContractManagerCard({ lead, onRefresh, onUpdateLead }: ContractManagerCardProps) {
   const [isPending, startTransition] = useTransition();
 
-  // Financial State
-  const [projectCost, setProjectCost] = useState<number>(lead.contractCost || 50000);
-  const [downpaymentPct, setDownpaymentPct] = useState<number>(lead.contractDownpaymentPct ?? 50);
-  const [currency, setCurrency] = useState<'PHP' | 'USD'>((lead.contractCurrency as any) || 'PHP');
+  // Financial State - strictly empty by default if unset in dossier
+  const [projectCost, setProjectCost] = useState<string>(
+    lead.contractCost !== undefined && lead.contractCost !== null ? String(lead.contractCost) : ''
+  );
+  const [downpaymentPct, setDownpaymentPct] = useState<string>(
+    lead.contractDownpaymentPct !== undefined && lead.contractDownpaymentPct !== null ? String(lead.contractDownpaymentPct) : ''
+  );
+  const [currency, setCurrency] = useState<string>(lead.contractCurrency || '');
   const [companyName, setCompanyName] = useState<string>(lead.companyName || '');
   const [clientAddress, setClientAddress] = useState<string>(lead.address || '');
   const [esignEnabled, setEsignEnabled] = useState<boolean>(lead.contractEsignEnabled !== false);
+
+  // Contract Content Customization State (Requirement 1: Admin can edit contract contents)
+  const [contractTitle, setContractTitle] = useState<string>(
+    lead.contractTitle || 'Master Service Agreement'
+  );
+  const [scopeDescription, setScopeDescription] = useState<string>(
+    lead.contractScope || ''
+  );
+  const [customTerms, setCustomTerms] = useState<string>(
+    lead.contractCustomTerms || ''
+  );
+  const [paymentTermsNotes, setPaymentTermsNotes] = useState<string>(
+    lead.paymentTermsNotes || ''
+  );
 
   // Access Code State
   const [accessCode, setAccessCode] = useState<string>(
@@ -43,22 +62,26 @@ export default function ContractManagerCard({ lead, onRefresh }: ContractManager
   const [attachmentType, setAttachmentType] = useState<string>('pdf');
   const [fileNamePreview, setFileNamePreview] = useState<string | null>(null);
 
-  // UI Feedback
+  // UI Feedback & Active Tab
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [copyCodeFeedback, setCopyCodeFeedback] = useState(false);
   const [copyInviteFeedback, setCopyInviteFeedback] = useState(false);
-  const [activeTab, setActiveTab] = useState<'terms' | 'status'>('terms');
+  const [activeTab, setActiveTab] = useState<'terms' | 'contents' | 'status'>('terms');
 
   // Synchronize state whenever lead prop changes
   useEffect(() => {
     const code = lead.contractAccessCode || getDeterministicAccessCode(lead.id);
     setAccessCode(code);
-    setProjectCost(lead.contractCost || 50000);
-    setDownpaymentPct(lead.contractDownpaymentPct ?? 50);
-    setCurrency((lead.contractCurrency as any) || 'PHP');
+    setProjectCost(lead.contractCost !== undefined && lead.contractCost !== null ? String(lead.contractCost) : '');
+    setDownpaymentPct(lead.contractDownpaymentPct !== undefined && lead.contractDownpaymentPct !== null ? String(lead.contractDownpaymentPct) : '');
+    setCurrency(lead.contractCurrency || '');
     setCompanyName(lead.companyName || '');
     setClientAddress(lead.address || '');
     setEsignEnabled(lead.contractEsignEnabled !== false);
+    setContractTitle(lead.contractTitle || 'Master Service Agreement');
+    setScopeDescription(lead.contractScope || '');
+    setCustomTerms(lead.contractCustomTerms || '');
+    setPaymentTermsNotes(lead.paymentTermsNotes || '');
     setContractStatus((lead.contractStatus as any) || 'Draft');
     setAttachmentUrl(lead.contractAttachmentUrl || null);
     setAttachmentName(lead.contractAttachmentName || null);
@@ -71,15 +94,28 @@ export default function ContractManagerCard({ lead, onRefresh }: ContractManager
     lead.companyName, 
     lead.address, 
     lead.contractEsignEnabled,
+    lead.contractTitle,
+    lead.contractScope,
+    lead.contractCustomTerms,
+    lead.paymentTermsNotes,
     lead.contractStatus, 
     lead.contractAttachmentUrl, 
     lead.contractAttachmentName
   ]);
 
-  // Derived financial math
-  const currencySymbol = currency === 'PHP' ? '₱' : '$';
-  const downpaymentAmount = projectCost * (downpaymentPct / 100);
-  const balanceAmount = Math.max(0, projectCost - downpaymentAmount);
+  // Derived financial math (safely handling empty state)
+  const numericCost = projectCost.trim() !== '' && !isNaN(Number(projectCost)) ? Number(projectCost) : null;
+  const numericDownpaymentPct = downpaymentPct.trim() !== '' && !isNaN(Number(downpaymentPct)) ? Number(downpaymentPct) : null;
+  
+  const currencySymbol = currency === 'USD' ? '$' : currency === 'EUR' ? '€' : currency === 'GBP' ? '£' : (currency === 'PHP' ? '₱' : (currency ? `${currency} ` : '₱'));
+  const effectiveCurrencyCode = currency || 'PHP';
+
+  const downpaymentAmount = numericCost !== null && numericDownpaymentPct !== null 
+    ? numericCost * (numericDownpaymentPct / 100) 
+    : 0;
+  const balanceAmount = numericCost !== null 
+    ? Math.max(0, numericCost - (numericDownpaymentPct !== null ? downpaymentAmount : 0)) 
+    : 0;
 
   // Contract URL
   const contractPath = `/contract/${lead.id}?type=${lead.type}`;
@@ -94,7 +130,7 @@ export default function ContractManagerCard({ lead, onRefresh }: ContractManager
   };
 
   const handleCopyInviteMessage = () => {
-    const msg = `Hi ${lead.firstName}, please review and electronically sign our Master Service Agreement with Macrotek Digital Solutions here:\n\n${contractUrl}\n\nYour Access Code: ${accessCode}`;
+    const msg = `Hi ${lead.firstName}, please review and electronically sign our ${contractTitle} with Macrotek Digital Solutions here:\n\n${contractUrl}\n\nYour Access Code: ${accessCode}`;
     navigator.clipboard.writeText(msg);
     setCopyInviteFeedback(true);
     setTimeout(() => setCopyInviteFeedback(false), 2500);
@@ -106,6 +142,7 @@ export default function ContractManagerCard({ lead, onRefresh }: ContractManager
       if (res.success && res.newCode) {
         setAccessCode(res.newCode);
         setFeedback({ type: 'success', message: `Generated new access code: ${res.newCode}` });
+        onUpdateLead?.({ contractAccessCode: res.newCode });
         onRefresh();
       } else {
         setFeedback({ type: 'error', message: res.error || 'Failed to regenerate code' });
@@ -114,27 +151,60 @@ export default function ContractManagerCard({ lead, onRefresh }: ContractManager
     });
   };
 
-  const handleSaveFinancials = () => {
+  // Requirement 3: Ensure changes made in the dossier immediately take effect when contract is loaded or refreshed
+  const handleSaveContractAndFinancials = () => {
     setFeedback(null);
     startTransition(async () => {
+      const parsedCost = numericCost;
+      const parsedDownpayment = numericDownpaymentPct;
+      const parsedCurrency = currency.trim();
+      const parsedTitle = contractTitle.trim() || 'Master Service Agreement';
+      const parsedScope = scopeDescription.trim();
+      const parsedCustomTerms = customTerms.trim();
+      const parsedPaymentNotes = paymentTermsNotes.trim();
+
       const res = await updateContractFinancialsAction({
         contractId: lead.contractId || lead.id,
         leadId: lead.id,
-        projectCost: Number(projectCost) || 0,
-        downpaymentPercentage: Number(downpaymentPct) || 50,
-        currency,
-        companyName,
-        clientAddress,
+        leadType: lead.type,
+        projectCost: parsedCost,
+        downpaymentPercentage: parsedDownpayment,
+        currency: parsedCurrency,
+        companyName: companyName.trim(),
+        clientAddress: clientAddress.trim(),
+        contractTitle: parsedTitle,
+        scopeDescription: parsedScope,
+        customTerms: parsedCustomTerms,
+        paymentTermsNotes: parsedPaymentNotes,
         esignEnabled
       });
 
       if (res.success) {
-        setFeedback({ type: 'success', message: 'Contract terms and signing permissions saved successfully!' });
+        // Immediate local state update for zero-latency UI consistency
+        onUpdateLead?.({
+          contractCost: parsedCost,
+          contractDownpaymentPct: parsedDownpayment,
+          contractCurrency: parsedCurrency,
+          companyName: companyName.trim(),
+          address: clientAddress.trim(),
+          contractTitle: parsedTitle,
+          contractScope: parsedScope,
+          contractCustomTerms: parsedCustomTerms,
+          paymentTermsNotes: parsedPaymentNotes,
+          contractEsignEnabled: esignEnabled
+        });
+
+        // Trigger parent and server component data revalidation
         onRefresh();
+
+        setFeedback({ 
+          type: 'success', 
+          message: 'Contract terms and contents saved! Changes have taken effect and the live agreement format has auto-adjusted.' 
+        });
       } else {
         setFeedback({ type: 'error', message: res.error || 'Failed to update contract terms' });
       }
-      setTimeout(() => setFeedback(null), 3500);
+      setTimeout(() => setFeedback(null), 4000);
     });
   };
 
@@ -144,6 +214,7 @@ export default function ContractManagerCard({ lead, onRefresh }: ContractManager
     startTransition(async () => {
       const res = await toggleContractEsignAction(lead.id, newVal);
       if (res.success) {
+        onUpdateLead?.({ contractEsignEnabled: newVal });
         setFeedback({ 
           type: 'success', 
           message: newVal 
@@ -162,7 +233,6 @@ export default function ContractManagerCard({ lead, onRefresh }: ContractManager
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Check size limit: max 6MB
     if (file.size > 6 * 1024 * 1024) {
       setFeedback({ type: 'error', message: 'File is too large. Please upload an image or PDF under 6MB.' });
       return;
@@ -201,6 +271,12 @@ export default function ContractManagerCard({ lead, onRefresh }: ContractManager
       });
 
       if (res.success) {
+        onUpdateLead?.({
+          contractStatus: contractStatus,
+          contractAttachmentUrl: attachmentUrl,
+          contractAttachmentName: attachmentName,
+          contractSigningMethod: attachmentUrl ? 'manual_hardcopy' : 'electronic'
+        });
         setFeedback({ 
           type: 'success', 
           message: contractStatus === 'Signed' 
@@ -217,6 +293,25 @@ export default function ContractManagerCard({ lead, onRefresh }: ContractManager
 
   const isSigned = contractStatus === 'Signed' || lead.contractStatus === 'Signed';
 
+  // Content preset helpers
+  const applyScopePreset = (type: string) => {
+    if (type === 'custom_dev') {
+      setScopeDescription('Full-stack web application engineering, scalable PostgreSQL database architecture, custom administrative dashboard with CRM pipeline control, automated n8n webhook triggers, and cloud staging deployment.');
+    } else if (type === 'consulting') {
+      setScopeDescription('Enterprise technology architecture audit, cloud infrastructure review, system optimization recommendations, security hardening roadmap, and executive advisory sessions.');
+    } else if (type === 'retainer') {
+      setScopeDescription('Monthly dedicated engineering retainer covering 40 hours of full-stack feature development, database performance tuning, bug mitigation, and 99.9% uptime monitoring.');
+    }
+  };
+
+  const applyPaymentPreset = (type: string) => {
+    if (type === 'milestone_50_50') {
+      setPaymentTermsNotes('50% commencement downpayment required upon contract execution via Bank Transfer (BDO / BPI) or GCash; 50% handover balance due immediately upon production staging turnover and administrative credentials sign-off.');
+    } else if (type === 'three_stages') {
+      setPaymentTermsNotes('40% initialization downpayment upon agreement signing; 30% milestone payment upon sprint delivery of core features; 30% final balance upon final staging deployment.');
+    }
+  };
+
   return (
     <div className="bg-zinc-900 text-white rounded-3xl border border-zinc-800 p-5 space-y-5">
       
@@ -227,7 +322,7 @@ export default function ContractManagerCard({ lead, onRefresh }: ContractManager
             <Icons.FileCheck2 size={20} />
           </div>
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <h4 className="text-sm font-bold text-white uppercase tracking-wider">
                 Service Agreement &amp; Contract Form
               </h4>
@@ -252,7 +347,7 @@ export default function ContractManagerCard({ lead, onRefresh }: ContractManager
               </span>
             </div>
             <p className="text-xs text-zinc-400 mt-0.5">
-              Configure project cost, downpayment percentage, company name, e-sign permissions, and access code.
+              Customize contract title, scope clauses, pricing terms, e-sign permissions, and client access code.
             </p>
           </div>
         </div>
@@ -308,7 +403,7 @@ export default function ContractManagerCard({ lead, onRefresh }: ContractManager
             type="button"
             onClick={handleRegenerateCode}
             disabled={isPending}
-            className="px-2.5 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-medium rounded-lg transition-colors flex items-center gap-1.5 disabled:opacity-50"
+            className="px-2.5 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-medium rounded-lg transition-colors flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
             title="Generate a new 6-digit access code"
           >
             <Icons.RefreshCw size={12} className={isPending ? 'animate-spin' : ''} />
@@ -327,7 +422,7 @@ export default function ContractManagerCard({ lead, onRefresh }: ContractManager
           <button
             type="button"
             onClick={handleCopyInviteMessage}
-            className="text-[11px] text-emerald-400 hover:text-emerald-300 font-semibold flex items-center gap-1 transition-colors"
+            className="text-[11px] text-emerald-400 hover:text-emerald-300 font-semibold flex items-center gap-1 transition-colors cursor-pointer"
           >
             {copyInviteFeedback ? (
               <React.Fragment>
@@ -343,28 +438,40 @@ export default function ContractManagerCard({ lead, onRefresh }: ContractManager
           </button>
         </div>
         <p className="text-xs text-zinc-300 font-mono bg-zinc-900 p-2.5 rounded-xl border border-zinc-800 select-all leading-relaxed break-all">
-          Hi {lead.firstName}, please review and electronically sign our Master Service Agreement with Macrotek Digital Solutions here: {contractUrl} | Access Code: {accessCode}
+          Hi {lead.firstName}, please review and electronically sign our {contractTitle} with Macrotek Digital Solutions here: {contractUrl} | Access Code: {accessCode}
         </p>
       </div>
 
-      {/* Tabs Switcher: Financials vs. Status & Hardcopy */}
-      <div className="flex border-b border-zinc-800">
+      {/* 3-Tier Tabs Switcher */}
+      <div className="flex border-b border-zinc-800 overflow-x-auto">
         <button
           type="button"
           onClick={() => setActiveTab('terms')}
-          className={`px-4 py-2 text-xs font-bold border-b-2 transition-colors flex items-center gap-1.5 ${
+          className={`px-4 py-2 text-xs font-bold border-b-2 transition-colors flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
             activeTab === 'terms'
               ? 'border-emerald-500 text-emerald-400 bg-zinc-800/40 rounded-t-lg'
               : 'border-transparent text-zinc-400 hover:text-zinc-200'
           }`}
         >
           <Icons.DollarSign size={13} />
-          <span>Project Cost &amp; Downpayment</span>
+          <span>Financials &amp; Pricing</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('contents')}
+          className={`px-4 py-2 text-xs font-bold border-b-2 transition-colors flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+            activeTab === 'contents'
+              ? 'border-emerald-500 text-emerald-400 bg-zinc-800/40 rounded-t-lg'
+              : 'border-transparent text-zinc-400 hover:text-zinc-200'
+          }`}
+        >
+          <Icons.FileEdit size={13} />
+          <span>Contract Contents &amp; Scope</span>
         </button>
         <button
           type="button"
           onClick={() => setActiveTab('status')}
-          className={`px-4 py-2 text-xs font-bold border-b-2 transition-colors flex items-center gap-1.5 ${
+          className={`px-4 py-2 text-xs font-bold border-b-2 transition-colors flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
             activeTab === 'status'
               ? 'border-emerald-500 text-emerald-400 bg-zinc-800/40 rounded-t-lg'
               : 'border-transparent text-zinc-400 hover:text-zinc-200'
@@ -375,59 +482,77 @@ export default function ContractManagerCard({ lead, onRefresh }: ContractManager
         </button>
       </div>
 
+      {/* Feedback banner */}
+      {feedback && (
+        <div className={`p-3 rounded-xl border text-xs flex items-center gap-2 ${
+          feedback.type === 'success'
+            ? 'bg-emerald-950/50 border-emerald-800 text-emerald-300'
+            : 'bg-red-950/50 border-red-800 text-red-300'
+        }`}>
+          {feedback.type === 'success' ? <Icons.CheckCircle2 size={14} /> : <Icons.AlertCircle size={14} />}
+          <span>{feedback.message}</span>
+        </div>
+      )}
+
       {/* TAB 1: FINANCIAL TERMS CONFIGURATION */}
       {activeTab === 'terms' && (
         <div className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             
-            {/* Project Cost */}
+            {/* Project Cost (Requirement 2: empty by default if not set in dossier) */}
             <div>
               <label className="block text-[11px] font-bold text-zinc-400 mb-1">
-                Project Cost ({currencySymbol})
+                Project Cost {currency ? `(${currencySymbol.trim()})` : ''}
               </label>
-              <div className="relative">
-                <input
-                  type="number"
-                  min="0"
-                  step="100"
-                  value={projectCost}
-                  onChange={(e) => setProjectCost(Number(e.target.value))}
-                  className="w-full px-3 py-2 bg-zinc-950 border border-zinc-700 text-white rounded-xl text-xs font-mono font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                />
-              </div>
+              <input
+                type="number"
+                min="0"
+                step="100"
+                value={projectCost}
+                onChange={(e) => setProjectCost(e.target.value)}
+                placeholder="Leave empty if pending..."
+                className="w-full px-3 py-2 bg-zinc-950 border border-zinc-700 text-white rounded-xl text-xs font-mono font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500 placeholder:text-zinc-600"
+              />
+              <span className="text-[10px] text-zinc-500 mt-1 block">
+                {numericCost !== null ? `Agreed fee: ${currencySymbol}${numericCost.toLocaleString()}` : 'Default is empty (pending agreement)'}
+              </span>
             </div>
 
-            {/* Downpayment Percentage */}
+            {/* Downpayment Percentage (Requirement 2: empty by default if not set in dossier) */}
             <div>
               <label className="block text-[11px] font-bold text-zinc-400 mb-1">
                 Downpayment %
               </label>
               <select
                 value={downpaymentPct}
-                onChange={(e) => setDownpaymentPct(Number(e.target.value))}
+                onChange={(e) => setDownpaymentPct(e.target.value)}
                 className="w-full px-3 py-2 bg-zinc-950 border border-zinc-700 text-white rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500"
               >
-                <option value={10}>10% Upfront</option>
-                <option value={20}>20% Upfront</option>
-                <option value={30}>30% Upfront</option>
-                <option value={40}>40% Upfront</option>
-                <option value={50}>50% Upfront (Standard)</option>
-                <option value={60}>60% Upfront</option>
-                <option value={70}>70% Upfront</option>
-                <option value={100}>100% Full Payment</option>
+                <option value="">None / Pending Agreement (Empty)</option>
+                <option value="10">10% Upfront</option>
+                <option value="20">20% Upfront</option>
+                <option value="30">30% Upfront</option>
+                <option value="40">40% Upfront</option>
+                <option value="50">50% Upfront (Standard)</option>
+                <option value="60">60% Upfront</option>
+                <option value="70">70% Upfront</option>
+                <option value="100">100% Full Payment</option>
               </select>
+              <span className="text-[10px] text-zinc-500 mt-1 block">
+                {numericDownpaymentPct !== null ? `${numericDownpaymentPct}% commencement fee` : 'Unassigned (leaves contract breakdown flexible)'}
+              </span>
             </div>
 
-            {/* Currency Selector (Php or $) */}
+            {/* Currency Selector (Requirement 2: empty by default if not set in dossier) */}
             <div>
               <label className="block text-[11px] font-bold text-zinc-400 mb-1">
                 Currency
               </label>
-              <div className="grid grid-cols-2 gap-1.5">
+              <div className="grid grid-cols-3 gap-1">
                 <button
                   type="button"
-                  onClick={() => setCurrency('PHP')}
-                  className={`py-2 px-2.5 rounded-xl text-xs font-bold border transition-all ${
+                  onClick={() => setCurrency(currency === 'PHP' ? '' : 'PHP')}
+                  className={`py-2 px-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
                     currency === 'PHP'
                       ? 'bg-emerald-600 border-emerald-500 text-white'
                       : 'bg-zinc-950 border-zinc-700 text-zinc-400 hover:text-white'
@@ -437,8 +562,8 @@ export default function ContractManagerCard({ lead, onRefresh }: ContractManager
                 </button>
                 <button
                   type="button"
-                  onClick={() => setCurrency('USD')}
-                  className={`py-2 px-2.5 rounded-xl text-xs font-bold border transition-all ${
+                  onClick={() => setCurrency(currency === 'USD' ? '' : 'USD')}
+                  className={`py-2 px-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
                     currency === 'USD'
                       ? 'bg-emerald-600 border-emerald-500 text-white'
                       : 'bg-zinc-950 border-zinc-700 text-zinc-400 hover:text-white'
@@ -446,25 +571,52 @@ export default function ContractManagerCard({ lead, onRefresh }: ContractManager
                 >
                   USD ($)
                 </button>
+                <button
+                  type="button"
+                  onClick={() => setCurrency('')}
+                  className={`py-2 px-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                    currency === ''
+                      ? 'bg-zinc-800 border-zinc-600 text-zinc-200'
+                      : 'bg-zinc-950 border-zinc-700 text-zinc-500 hover:text-zinc-300'
+                  }`}
+                >
+                  Empty
+                </button>
               </div>
+              <span className="text-[10px] text-zinc-500 mt-1 block">
+                {currency ? `Active currency: ${currency}` : 'Empty by default'}
+              </span>
             </div>
 
           </div>
 
-          {/* Computed Summary Preview */}
+          {/* Computed Summary Preview (Dynamically auto-adjusts) */}
           <div className="p-3 bg-zinc-950 rounded-2xl border border-zinc-800 flex items-center justify-between text-xs">
-            <div>
-              <span className="text-[10px] text-zinc-500 uppercase block font-bold">Commencement Downpayment</span>
-              <span className="text-emerald-400 font-bold font-mono text-sm">
-                {currencySymbol}{downpaymentAmount.toLocaleString()} {currency} ({downpaymentPct}%)
-              </span>
-            </div>
-            <div className="text-right">
-              <span className="text-[10px] text-zinc-500 uppercase block font-bold">Handover Balance</span>
-              <span className="text-zinc-300 font-bold font-mono text-sm">
-                {currencySymbol}{balanceAmount.toLocaleString()} {currency} ({100 - downpaymentPct}%)
-              </span>
-            </div>
+            {numericCost !== null ? (
+              <React.Fragment>
+                <div>
+                  <span className="text-[10px] text-zinc-500 uppercase block font-bold">Commencement Downpayment</span>
+                  <span className="text-emerald-400 font-bold font-mono text-sm">
+                    {numericDownpaymentPct !== null 
+                      ? `${currencySymbol}${downpaymentAmount.toLocaleString()} ${effectiveCurrencyCode} (${numericDownpaymentPct}%)` 
+                      : 'Not assigned (Pending Schedule)'}
+                  </span>
+                </div>
+                <div className="text-right">
+                  <span className="text-[10px] text-zinc-500 uppercase block font-bold">Handover Balance</span>
+                  <span className="text-zinc-300 font-bold font-mono text-sm">
+                    {numericDownpaymentPct !== null 
+                      ? `${currencySymbol}${balanceAmount.toLocaleString()} ${effectiveCurrencyCode} (${100 - numericDownpaymentPct}%)`
+                      : `${currencySymbol}${numericCost.toLocaleString()} ${effectiveCurrencyCode}`}
+                  </span>
+                </div>
+              </React.Fragment>
+            ) : (
+              <div className="text-zinc-400 italic text-[11px] flex items-center gap-2">
+                <Icons.Info size={13} className="text-amber-400" />
+                <span>Financial terms are currently empty. The contract will display the &quot;Pending Final Agreement&quot; banner.</span>
+              </div>
+            )}
           </div>
 
           {/* Company & Client Address Overrides */}
@@ -551,28 +703,189 @@ export default function ContractManagerCard({ lead, onRefresh }: ContractManager
             </div>
           </div>
 
+          {/* Master Save Button for Terms */}
           <button
             type="button"
-            onClick={handleSaveFinancials}
+            onClick={handleSaveContractAndFinancials}
             disabled={isPending}
-            className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold text-xs uppercase tracking-wider rounded-xl transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-xs"
+            className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold text-xs uppercase tracking-wider rounded-xl transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-xs"
           >
             {isPending ? (
               <React.Fragment>
                 <Icons.Loader2 size={14} className="animate-spin" />
-                <span>Saving Contract Terms...</span>
+                <span>Applying Changes to Live Contract...</span>
               </React.Fragment>
             ) : (
               <React.Fragment>
                 <Icons.Save size={14} />
-                <span>Save Financial Terms to Contract</span>
+                <span>Apply Financial Terms to Contract</span>
               </React.Fragment>
             )}
           </button>
         </div>
       )}
 
-      {/* TAB 2: STATUS & HARDCOPY ATTACHMENT */}
+      {/* TAB 2: CONTRACT CONTENTS & CLAUSES CUSTOMIZATION (Requirement 1) */}
+      {activeTab === 'contents' && (
+        <div className="space-y-4">
+          
+          {/* Contract Title */}
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-[11px] font-bold text-zinc-400">
+                Contract Document Title
+              </label>
+              <div className="flex items-center gap-1 text-[10px] text-zinc-500">
+                <span>Quick:</span>
+                <button
+                  type="button"
+                  onClick={() => setContractTitle('Master Service Agreement')}
+                  className="hover:text-emerald-400 underline cursor-pointer"
+                >
+                  MSA
+                </button>
+                <span>&bull;</span>
+                <button
+                  type="button"
+                  onClick={() => setContractTitle('Software Development Agreement')}
+                  className="hover:text-emerald-400 underline cursor-pointer"
+                >
+                  Dev Agreement
+                </button>
+                <span>&bull;</span>
+                <button
+                  type="button"
+                  onClick={() => setContractTitle('Technology Consulting & Retainer Agreement')}
+                  className="hover:text-emerald-400 underline cursor-pointer"
+                >
+                  Retainer
+                </button>
+              </div>
+            </div>
+            <input
+              type="text"
+              value={contractTitle}
+              onChange={(e) => setContractTitle(e.target.value)}
+              placeholder="e.g. Master Service Agreement"
+              className="w-full px-3 py-2 bg-zinc-950 border border-zinc-700 text-white rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            />
+            <span className="text-[10px] text-zinc-500 mt-0.5 block">
+              Auto-formats letterhead, references, and legal clauses.
+            </span>
+          </div>
+
+          {/* Section 1: Scope of Services / Deliverables */}
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-[11px] font-bold text-zinc-400">
+                1. Scope of Digital Services &amp; Deliverables
+              </label>
+              <div className="flex items-center gap-1.5 text-[10px]">
+                <button
+                  type="button"
+                  onClick={() => applyScopePreset('custom_dev')}
+                  className="px-2 py-0.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded cursor-pointer transition-colors"
+                >
+                  + Web App Dev
+                </button>
+                <button
+                  type="button"
+                  onClick={() => applyScopePreset('consulting')}
+                  className="px-2 py-0.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded cursor-pointer transition-colors"
+                >
+                  + Cloud Audit
+                </button>
+                <button
+                  type="button"
+                  onClick={() => applyScopePreset('retainer')}
+                  className="px-2 py-0.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded cursor-pointer transition-colors"
+                >
+                  + Retainer
+                </button>
+              </div>
+            </div>
+            <textarea
+              rows={4}
+              value={scopeDescription}
+              onChange={(e) => setScopeDescription(e.target.value)}
+              placeholder="Specify bespoke engineering deliverables, milestones, API integrations, and architecture specs..."
+              className="w-full px-3 py-2 bg-zinc-950 border border-zinc-700 text-white rounded-xl text-xs leading-relaxed focus:outline-none focus:ring-2 focus:ring-emerald-500 font-sans"
+            />
+          </div>
+
+          {/* Payment Terms Notes & Instructions */}
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-[11px] font-bold text-zinc-400">
+                2. Billing Schedule Notes &amp; Payment Instructions
+              </label>
+              <div className="flex items-center gap-1.5 text-[10px]">
+                <button
+                  type="button"
+                  onClick={() => applyPaymentPreset('milestone_50_50')}
+                  className="px-2 py-0.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded cursor-pointer transition-colors"
+                >
+                  + 50/50 Standard
+                </button>
+                <button
+                  type="button"
+                  onClick={() => applyPaymentPreset('three_stages')}
+                  className="px-2 py-0.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded cursor-pointer transition-colors"
+                >
+                  + 40/30/30
+                </button>
+              </div>
+            </div>
+            <textarea
+              rows={2}
+              value={paymentTermsNotes}
+              onChange={(e) => setPaymentTermsNotes(e.target.value)}
+              placeholder="Specify bank accounts, GCash numbers, milestone triggers, or disbursement terms (optional)..."
+              className="w-full px-3 py-2 bg-zinc-950 border border-zinc-700 text-white rounded-xl text-xs leading-relaxed focus:outline-none focus:ring-2 focus:ring-emerald-500 font-sans"
+            />
+          </div>
+
+          {/* Section 6: Custom Terms & Special Provisions */}
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-[11px] font-bold text-zinc-400 flex items-center gap-1">
+                <Icons.ShieldAlert size={12} className="text-emerald-400" />
+                <span>6. Special Provisions &amp; Bespoke Agreement Terms (Optional)</span>
+              </label>
+              <span className="text-[10px] text-zinc-500">Auto-collapses in document if left blank</span>
+            </div>
+            <textarea
+              rows={4}
+              value={customTerms}
+              onChange={(e) => setCustomTerms(e.target.value)}
+              placeholder="Add client-specific covenants, bespoke SLA uptime targets, extended warranty clauses, or NDA conditions..."
+              className="w-full px-3 py-2 bg-zinc-950 border border-zinc-700 text-white rounded-xl text-xs leading-relaxed focus:outline-none focus:ring-2 focus:ring-emerald-500 font-sans"
+            />
+          </div>
+
+          {/* Master Save Button for Contents */}
+          <button
+            type="button"
+            onClick={handleSaveContractAndFinancials}
+            disabled={isPending}
+            className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold text-xs uppercase tracking-wider rounded-xl transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-xs"
+          >
+            {isPending ? (
+              <React.Fragment>
+                <Icons.Loader2 size={14} className="animate-spin" />
+                <span>Saving Contract Clauses &amp; Layout...</span>
+              </React.Fragment>
+            ) : (
+              <React.Fragment>
+                <Icons.Save size={14} />
+                <span>Save Contract Contents &amp; Auto-Adjust Layout</span>
+              </React.Fragment>
+            )}
+          </button>
+        </div>
+      )}
+
+      {/* TAB 3: STATUS & HARDCOPY ATTACHMENT */}
       {activeTab === 'status' && (
         <div className="space-y-4">
           
@@ -648,37 +961,33 @@ export default function ContractManagerCard({ lead, onRefresh }: ContractManager
                   <a
                     href={attachmentUrl}
                     download={attachmentName || 'signed_contract.pdf'}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-[11px] font-bold shrink-0 flex items-center gap-1 transition-colors"
+                    className="px-2.5 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-[11px] font-semibold rounded-lg flex items-center gap-1 shrink-0"
                   >
-                    <Icons.Download size={11} />
-                    <span>View / Download</span>
+                    <Icons.Download size={12} />
+                    <span>Download</span>
                   </a>
                 )}
               </div>
             )}
 
-            <div className="flex items-center gap-3">
-              <label className="cursor-pointer px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-xl text-xs font-bold transition-colors inline-flex items-center gap-2 border border-zinc-700">
-                <Icons.UploadCloud size={14} />
-                <span>Choose PDF or Image</span>
-                <input
-                  type="file"
-                  accept="application/pdf,image/png,image/jpeg,image/webp"
-                  onChange={handleFileUpload}
-                  className="hidden"
-                />
+            {/* Upload File Input */}
+            <div>
+              <label className="block text-[11px] font-bold text-zinc-400 mb-1">
+                Upload Scanned Document
               </label>
-
-              {fileNamePreview && (
-                <span className="text-[11px] text-emerald-400 font-medium">
-                  File loaded &amp; ready to save.
-                </span>
-              )}
+              <input
+                type="file"
+                accept=".pdf,image/png,image/jpeg,image/webp"
+                onChange={handleFileUpload}
+                className="w-full text-xs text-zinc-400 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-zinc-800 file:text-zinc-200 hover:file:bg-zinc-700 cursor-pointer"
+              />
+              <span className="text-[10px] text-zinc-500 mt-1 block">
+                Accepted formats: PDF, PNG, JPG (Max 6MB)
+              </span>
             </div>
           </div>
 
+          {/* Save Status & Attachment Button */}
           <button
             type="button"
             onClick={handleSaveStatusAndAttachment}
@@ -688,32 +997,15 @@ export default function ContractManagerCard({ lead, onRefresh }: ContractManager
             {isPending ? (
               <React.Fragment>
                 <Icons.Loader2 size={14} className="animate-spin" />
-                <span>Updating Status &amp; Attachment...</span>
+                <span>Saving Status &amp; Document...</span>
               </React.Fragment>
             ) : (
               <React.Fragment>
-                <Icons.CheckCircle2 size={14} />
-                <span>Save Status &amp; Attachment</span>
+                <Icons.Save size={14} />
+                <span>Save Status &amp; Hardcopy Attachment</span>
               </React.Fragment>
             )}
           </button>
-
-        </div>
-      )}
-
-      {/* Feedback Alert */}
-      {feedback && (
-        <div className={`p-3 rounded-xl text-xs font-medium flex items-center gap-2 ${
-          feedback.type === 'success' 
-            ? 'bg-emerald-950/80 border border-emerald-800 text-emerald-300' 
-            : 'bg-red-950/80 border border-red-800 text-red-300'
-        }`}>
-          {feedback.type === 'success' ? (
-            <Icons.CheckCircle2 size={15} className="text-emerald-400 shrink-0" />
-          ) : (
-            <Icons.AlertCircle size={15} className="text-red-400 shrink-0" />
-          )}
-          <span>{feedback.message}</span>
         </div>
       )}
 

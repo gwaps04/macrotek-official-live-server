@@ -6,6 +6,7 @@ import * as Icons from 'lucide-react';
 // FILE: src/app/contract/[leadId]/page.tsx
 
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export default async function PublicContractPage(props: {
   params: Promise<{ leadId: string }>;

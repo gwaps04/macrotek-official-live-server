@@ -447,11 +447,14 @@ function createInitialStore(): MockStore {
         client_address: 'Legazpi City, Albay, Philippines',
         client_email: 'ssjasonmillena@gmail.com',
         client_phone: '+63 9563355850',
-        project_cost: 50000,
-        downpayment_percentage: 50,
-        currency: 'PHP',
+        contract_title: 'Master Service Agreement',
+        project_cost: null,
+        downpayment_percentage: null,
+        currency: '',
         access_code: '928641',
         scope_description: 'Custom Enterprise ERP Architecture, Lead Command Center & Workflow Automation Integration.',
+        custom_terms: '',
+        payment_terms_notes: '',
         status: 'Draft',
         signature_data: null,
         signature_type: 'drawn',
@@ -476,11 +479,14 @@ function createInitialStore(): MockStore {
         client_address: 'Makati Central Business District, Philippines',
         client_email: 'david.vance@techcorp.io',
         client_phone: '+63 920 555 4321',
-        project_cost: 75000,
-        downpayment_percentage: 50,
-        currency: 'PHP',
+        contract_title: 'Master Service Agreement',
+        project_cost: null,
+        downpayment_percentage: null,
+        currency: '',
         access_code: '672017',
         scope_description: 'Full Infrastructure & High-Volume Serverless API Architecture Audit.',
+        custom_terms: '',
+        payment_terms_notes: '',
         status: 'Draft',
         signature_data: null,
         signature_type: 'drawn',
@@ -505,11 +511,14 @@ function createInitialStore(): MockStore {
         client_address: 'Bonifacio Global City, Taguig, Philippines',
         client_email: 'sarah.j@enterprise.io',
         client_phone: '+63 917 888 1234',
-        project_cost: 25000,
-        downpayment_percentage: 50,
-        currency: 'PHP',
+        contract_title: 'Master Service Agreement',
+        project_cost: null,
+        downpayment_percentage: null,
+        currency: '',
         access_code: '831273',
         scope_description: 'Full Cohort Professional Enterprise Development Course Enrollment.',
+        custom_terms: '',
+        payment_terms_notes: '',
         status: 'Draft',
         signature_data: null,
         signature_type: 'drawn',
@@ -1087,9 +1096,9 @@ function processMockQuery(strings: TemplateStringsArray | string | string[], val
         client_address: '',
         client_email: '',
         client_phone: '',
-        project_cost: 50000,
-        downpayment_percentage: 50,
-        currency: 'PHP',
+        project_cost: null,
+        downpayment_percentage: null,
+        currency: '',
         access_code: generatedCode,
         scope_description: '',
         status: 'Draft',
@@ -1121,8 +1130,11 @@ function processMockQuery(strings: TemplateStringsArray | string | string[], val
           if (val === 'true') val = true;
           if (val === 'false') val = false;
 
-          if (col === 'project_cost') item.project_cost = Number(val) || 0;
-          else if (col === 'downpayment_percentage') item.downpayment_percentage = Number(val) ?? 50;
+          if (col === 'project_cost') item.project_cost = val !== null && val !== undefined && val !== '' && !isNaN(Number(val)) ? Number(val) : null;
+          else if (col === 'downpayment_percentage') item.downpayment_percentage = val !== null && val !== undefined && val !== '' && !isNaN(Number(val)) ? Number(val) : null;
+          else if (col === 'currency') item.currency = val ? String(val) : '';
+          else if (col === 'contract_title') item.contract_title = String(val || 'Master Service Agreement');
+          else if (col === 'custom_terms') item.custom_terms = String(val || '');
           else if (col === 'esign_enabled') item.esign_enabled = Boolean(val);
           else (item as any)[col] = val;
         });
@@ -1161,10 +1173,13 @@ function processMockQuery(strings: TemplateStringsArray | string | string[], val
           client_address: '',
           client_email: '',
           client_phone: '',
-          project_cost: 50000,
-          downpayment_percentage: 50,
-          currency: 'PHP',
+          contract_title: 'Master Service Agreement',
+          project_cost: null,
+          downpayment_percentage: null,
+          currency: '',
           access_code: String(Math.floor(100000 + Math.random() * 900000)),
+          scope_description: '',
+          custom_terms: '',
           status: 'Draft',
           esign_enabled: true,
           created_at: new Date().toISOString(),
@@ -1184,12 +1199,14 @@ function processMockQuery(strings: TemplateStringsArray | string | string[], val
           if (match) {
             const field = match[1].toLowerCase();
             const val = values[i];
-            if (field === 'project_cost') c.project_cost = Number(val) || 0;
-            else if (field === 'downpayment_percentage') c.downpayment_percentage = Number(val) ?? 50;
-            else if (field === 'currency') c.currency = val || 'PHP';
+            if (field === 'project_cost') c.project_cost = val !== null && val !== undefined && val !== '' && !isNaN(Number(val)) ? Number(val) : null;
+            else if (field === 'downpayment_percentage') c.downpayment_percentage = val !== null && val !== undefined && val !== '' && !isNaN(Number(val)) ? Number(val) : null;
+            else if (field === 'currency') c.currency = val ? String(val) : '';
+            else if (field === 'contract_title') c.contract_title = String(val || 'Master Service Agreement');
+            else if (field === 'scope_description') c.scope_description = String(val || '');
+            else if (field === 'custom_terms') c.custom_terms = String(val || '');
             else if (field === 'company_name') c.company_name = String(val || '');
             else if (field === 'client_address') c.client_address = String(val || '');
-            else if (field === 'scope_description') c.scope_description = String(val || '');
             else if (field === 'access_code') c.access_code = String(val);
             else if (field === 'status') c.status = val;
             else if (field === 'esign_enabled') c.esign_enabled = Boolean(val);
@@ -1202,6 +1219,7 @@ function processMockQuery(strings: TemplateStringsArray | string | string[], val
             else if (field === 'signed_at') c.signed_at = val;
             else if (field === 'signed_by_name') c.signed_by_name = val;
             else if (field === 'signed_by_title') c.signed_by_title = val;
+            else if (field === 'payment_terms_notes') c.payment_terms_notes = String(val || '');
           }
         }
 
@@ -1227,12 +1245,15 @@ function processMockQuery(strings: TemplateStringsArray | string | string[], val
               if (val.toLowerCase() === 'false') val = false;
             }
 
-            if (field === 'project_cost' && val !== undefined) c.project_cost = Number(val) || 0;
-            else if (field === 'downpayment_percentage' && val !== undefined) c.downpayment_percentage = Number(val) ?? 50;
-            else if (field === 'currency' && val) c.currency = val;
+            if (field === 'project_cost') c.project_cost = val !== null && val !== undefined && val !== '' && !isNaN(Number(val)) ? Number(val) : null;
+            else if (field === 'downpayment_percentage') c.downpayment_percentage = val !== null && val !== undefined && val !== '' && !isNaN(Number(val)) ? Number(val) : null;
+            else if (field === 'currency' && val !== undefined) c.currency = String(val || '');
+            else if (field === 'contract_title' && val !== undefined) c.contract_title = String(val || 'Master Service Agreement');
+            else if (field === 'scope_description' && val !== undefined) c.scope_description = String(val);
+            else if (field === 'custom_terms' && val !== undefined) c.custom_terms = String(val);
+            else if (field === 'payment_terms_notes' && val !== undefined) c.payment_terms_notes = String(val);
             else if (field === 'company_name' && val !== undefined) c.company_name = String(val);
             else if (field === 'client_address' && val !== undefined) c.client_address = String(val);
-            else if (field === 'scope_description' && val !== undefined) c.scope_description = String(val);
             else if (field === 'access_code' && val) c.access_code = String(val);
             else if (field === 'status' && val) c.status = val;
             else if (field === 'esign_enabled' && val !== undefined) c.esign_enabled = Boolean(val);
@@ -1260,8 +1281,6 @@ function processMockQuery(strings: TemplateStringsArray | string | string[], val
           h ^= h >>> 15;
           c.access_code = String(100000 + (Math.abs(h) % 900000));
         }
-        if (c.downpayment_percentage === undefined) c.downpayment_percentage = 50;
-        if (!c.currency) c.currency = 'PHP';
         if (c.esign_enabled === undefined) c.esign_enabled = true;
       });
       return list;
@@ -1285,14 +1304,92 @@ function processMockQuery(strings: TemplateStringsArray | string | string[], val
 }
 
 // ---------------------------------------------------------------------------
-// Unified SQL Tagged Template Export
+// Unified SQL Tagged Template Export & Self-Healing Neon Migration
 // ---------------------------------------------------------------------------
 
 let activeNeonClient: any = null;
+let migrationCompleted = false;
+let migrationRunning = false;
+
+export async function ensureContractsSchema(client: any = activeNeonClient): Promise<void> {
+  if (!client || migrationCompleted || migrationRunning) return;
+  migrationRunning = true;
+  try {
+    // 0. Ensure table exists first if not present in Neon
+    await client`
+      CREATE TABLE IF NOT EXISTS contracts (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        lead_id TEXT NOT NULL,
+        lead_type TEXT NOT NULL DEFAULT 'appointment',
+        client_name TEXT NOT NULL,
+        company_name TEXT,
+        client_address TEXT,
+        client_email TEXT NOT NULL,
+        client_phone TEXT,
+        contract_title TEXT DEFAULT 'Master Service Agreement',
+        project_title TEXT DEFAULT 'Master Service Agreement',
+        project_cost NUMERIC,
+        downpayment_percentage NUMERIC,
+        currency TEXT DEFAULT '',
+        access_code TEXT,
+        scope_description TEXT DEFAULT '',
+        custom_terms TEXT DEFAULT '',
+        payment_terms_notes TEXT DEFAULT '',
+        status TEXT DEFAULT 'Draft',
+        signature_data TEXT,
+        signature_type TEXT DEFAULT 'drawn',
+        signed_at TIMESTAMP WITH TIME ZONE,
+        signed_by_name TEXT,
+        signed_by_title TEXT,
+        signed_ip TEXT,
+        attachment_url TEXT,
+        attachment_name TEXT,
+        attachment_type TEXT,
+        signing_method TEXT DEFAULT 'electronic',
+        esign_enabled BOOLEAN NOT NULL DEFAULT true,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      )
+    `;
+
+    // 1. Add all compatible column variations idempotently
+    await client`ALTER TABLE contracts ADD COLUMN IF NOT EXISTS project_title TEXT DEFAULT 'Master Service Agreement'`;
+    await client`ALTER TABLE contracts ADD COLUMN IF NOT EXISTS contract_title TEXT DEFAULT 'Master Service Agreement'`;
+    await client`ALTER TABLE contracts ADD COLUMN IF NOT EXISTS scope_description TEXT DEFAULT ''`;
+    await client`ALTER TABLE contracts ADD COLUMN IF NOT EXISTS custom_terms TEXT DEFAULT ''`;
+    await client`ALTER TABLE contracts ADD COLUMN IF NOT EXISTS payment_terms_notes TEXT DEFAULT ''`;
+    await client`ALTER TABLE contracts ADD COLUMN IF NOT EXISTS esign_enabled BOOLEAN DEFAULT true`;
+    await client`ALTER TABLE contracts ADD COLUMN IF NOT EXISTS signature_data TEXT`;
+    await client`ALTER TABLE contracts ADD COLUMN IF NOT EXISTS signature_svg TEXT`;
+    await client`ALTER TABLE contracts ADD COLUMN IF NOT EXISTS signed_by_name TEXT`;
+    await client`ALTER TABLE contracts ADD COLUMN IF NOT EXISTS signed_by TEXT`;
+    await client`ALTER TABLE contracts ADD COLUMN IF NOT EXISTS signed_by_title TEXT`;
+    await client`ALTER TABLE contracts ADD COLUMN IF NOT EXISTS access_code TEXT DEFAULT '849201'`;
+    await client`ALTER TABLE contracts ADD COLUMN IF NOT EXISTS attachment_url TEXT`;
+    await client`ALTER TABLE contracts ADD COLUMN IF NOT EXISTS attachment_name TEXT`;
+    await client`ALTER TABLE contracts ADD COLUMN IF NOT EXISTS attachment_type TEXT`;
+    await client`ALTER TABLE contracts ADD COLUMN IF NOT EXISTS signing_method TEXT DEFAULT 'electronic'`;
+
+    // 2. Drop NOT NULL constraints on financial terms & titles to allow unnegotiated/empty states
+    try { await client`ALTER TABLE contracts ALTER COLUMN project_title DROP NOT NULL`; } catch {}
+    try { await client`ALTER TABLE contracts ALTER COLUMN project_cost DROP NOT NULL`; } catch {}
+    try { await client`ALTER TABLE contracts ALTER COLUMN downpayment_percentage DROP NOT NULL`; } catch {}
+    try { await client`ALTER TABLE contracts ALTER COLUMN currency DROP NOT NULL`; } catch {}
+
+    migrationCompleted = true;
+    console.log('[AI Studio DB] Neon contracts schema synchronized and self-healed successfully.');
+  } catch (err: any) {
+    console.warn('[AI Studio DB] Self-healing migration notice:', err?.message || err);
+  } finally {
+    migrationRunning = false;
+  }
+}
 
 if (process.env.DATABASE_URL && process.env.DATABASE_URL.trim() !== '') {
   try {
     activeNeonClient = neon(process.env.DATABASE_URL);
+    // Non-blocking initial migration
+    ensureContractsSchema(activeNeonClient).catch(() => {});
   } catch (err) {
     console.warn('[AI Studio DB] Failed to initialize Neon client with DATABASE_URL, using in-memory mock store:', err);
   }

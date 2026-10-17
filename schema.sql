@@ -27,6 +27,7 @@ DROP TABLE IF EXISTS faqs CASCADE;
 DROP TABLE IF EXISTS announcements CASCADE;
 DROP TABLE IF EXISTS admin_users CASCADE;
 DROP TABLE IF EXISTS site_config CASCADE;
+DROP TABLE IF EXISTS contracts CASCADE;
 
 -- =====================================================================================
 -- 2. REBUILD CORE AUTH & TRANSACTIONS
@@ -398,11 +399,14 @@ CREATE TABLE IF NOT EXISTS contracts (
   client_address TEXT,
   client_email TEXT NOT NULL,
   client_phone TEXT,
-  project_cost NUMERIC DEFAULT 1500.00,
-  downpayment_percentage NUMERIC DEFAULT 50.00,
-  currency TEXT DEFAULT 'PHP',
+  contract_title TEXT DEFAULT 'Master Service Agreement',
+  project_cost NUMERIC,
+  downpayment_percentage NUMERIC,
+  currency TEXT DEFAULT '',
   access_code TEXT,
   scope_description TEXT,
+  custom_terms TEXT DEFAULT '',
+  payment_terms_notes TEXT DEFAULT '',
   status TEXT DEFAULT 'Draft',
   signature_data TEXT,
   signature_type TEXT DEFAULT 'drawn',
@@ -419,8 +423,11 @@ CREATE TABLE IF NOT EXISTS contracts (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
+ALTER TABLE contracts ADD COLUMN IF NOT EXISTS contract_title TEXT DEFAULT 'Master Service Agreement';
+ALTER TABLE contracts ADD COLUMN IF NOT EXISTS custom_terms TEXT DEFAULT '';
+ALTER TABLE contracts ADD COLUMN IF NOT EXISTS payment_terms_notes TEXT DEFAULT '';
 ALTER TABLE contracts ADD COLUMN IF NOT EXISTS access_code TEXT;
-ALTER TABLE contracts ADD COLUMN IF NOT EXISTS downpayment_percentage NUMERIC DEFAULT 50.00;
+ALTER TABLE contracts ADD COLUMN IF NOT EXISTS downpayment_percentage NUMERIC;
 ALTER TABLE contracts ADD COLUMN IF NOT EXISTS attachment_url TEXT;
 ALTER TABLE contracts ADD COLUMN IF NOT EXISTS attachment_name TEXT;
 ALTER TABLE contracts ADD COLUMN IF NOT EXISTS attachment_type TEXT;
