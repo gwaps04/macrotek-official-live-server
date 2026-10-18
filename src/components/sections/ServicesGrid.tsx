@@ -63,7 +63,7 @@ export default function ServicesGrid({
 
   return (
     <section id="services" className="w-full py-24 relative z-10 transition-colors duration-500" style={sectionStyles}>
-      <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-360 mx-auto px-4 sm:px-6 lg:px-8">
         
         <div className="text-center max-w-2xl mx-auto mb-16">
           <h2 className="font-semibold tracking-wide uppercase text-sm mb-3 opacity-80">
@@ -93,13 +93,13 @@ export default function ServicesGrid({
               <div 
                 key={service.id} 
                 style={cardInlineStyle}
-                className="group rounded-2xl border border-black/5 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 ease-out overflow-hidden flex flex-col bg-[var(--card-bg)] text-[var(--card-text)] font-[family-name:var(--card-font)]"
+                className="group rounded-2xl border border-black/5 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 ease-out overflow-hidden flex flex-col bg-(--card-bg) text-(--card-text) font-(family-name:--card-font)"
               >
                 {/* Conditional Media Layout */}
                 {service.image_url ? (
                   <div className="relative w-full h-48 bg-black/5 border-b border-black/5">
                     <Image src={service.image_url} alt={service.title} fill className="object-cover" />
-                    <div className="absolute -bottom-6 left-6 w-12 h-12 rounded-xl bg-emerald-600 flex items-center justify-center shadow-lg border-2 border-[var(--card-bg)]">
+                    <div className="absolute -bottom-6 left-6 w-12 h-12 rounded-xl bg-emerald-600 flex items-center justify-center shadow-lg border-2 border-(--card-bg)">
                       <Icon className="w-6 h-6 text-white" strokeWidth={2} />
                     </div>
                   </div>

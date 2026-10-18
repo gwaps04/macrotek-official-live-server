@@ -171,20 +171,20 @@ export default async function AppointmentFormPage(props: {
         </Link>
 
         {isSuccess ? (
-          <div className="bg-[var(--booking-card-bg)] border border-current/10 rounded-2xl p-8 md:p-12 text-center shadow-sm max-w-2xl mx-auto" style={{ color: 'var(--booking-primary)' }}>
+          <div className="bg-(--booking-card-bg) border border-current/10 rounded-2xl p-8 md:p-12 text-center shadow-sm max-w-2xl mx-auto" style={{ color: 'var(--booking-primary)' }}>
             <div className="w-20 h-20 bg-current/10 rounded-full flex items-center justify-center mx-auto mb-6 text-current">
               <Icons.CheckCircle2 size={40} />
             </div>
             
-            <h1 className="text-3xl font-bold font-display mb-3 text-[var(--booking-text)]">Appointment Confirmed!</h1>
+            <h1 className="text-3xl font-bold font-display mb-3 text-(--booking-text)">Appointment Confirmed!</h1>
             
-            <p className="text-[var(--booking-text)] text-lg opacity-80 mb-8">
+            <p className="text-(--booking-text) text-lg opacity-80 mb-8">
               You are officially booked for <br className="sm:hidden"/>
               <strong className="text-current">{displayDate}</strong> at <strong className="text-current font-mono tracking-tight">{formatAmPm(bookedTime || '')}</strong>.
             </p>
 
-            <div className="bg-current/5 border border-current/10 rounded-xl p-6 mb-8 text-left max-w-md mx-auto text-[var(--booking-text)] flex items-start gap-4">
-              <div className="w-10 h-10 rounded-full bg-[var(--booking-card-bg)] shadow-sm flex items-center justify-center flex-shrink-0" style={{ color: 'var(--booking-primary)' }}>
+            <div className="bg-current/5 border border-current/10 rounded-xl p-6 mb-8 text-left max-w-md mx-auto text-(--booking-text) flex items-start gap-4">
+              <div className="w-10 h-10 rounded-full bg-(--booking-card-bg) shadow-sm flex items-center justify-center shrink-0" style={{ color: 'var(--booking-primary)' }}>
                 <Icons.Mail size={20} />
               </div>
               <div>
@@ -200,7 +200,7 @@ export default async function AppointmentFormPage(props: {
             </Link>
           </div>
         ) : (
-          <div className="bg-[var(--booking-card-bg)] rounded-2xl shadow-sm border border-current/10 overflow-hidden text-[var(--booking-text)]">
+          <div className="bg-(--booking-card-bg) rounded-2xl shadow-sm border border-current/10 overflow-hidden text-(--booking-text)">
             
             <div className="bg-current/5 p-8 border-b border-current/10">
               <h1 className="text-2xl font-bold font-display mb-2">
@@ -210,7 +210,7 @@ export default async function AppointmentFormPage(props: {
                 {bookingConfig.booking_form_subtitle || 'Please select a time and provide your details below.'}
               </p>
               
-              <div className="mt-6 inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-current/20 bg-[var(--booking-card-bg)] font-bold text-sm" style={{ color: 'var(--booking-primary)' }}>
+              <div className="mt-6 inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-current/20 bg-(--booking-card-bg) font-bold text-sm" style={{ color: 'var(--booking-primary)' }}>
                 <Icons.CalendarCheck size={18} /> {displayDate}
               </div>
             </div>
@@ -219,7 +219,7 @@ export default async function AppointmentFormPage(props: {
               
               {hasConflictError && (
                 <div className="mb-8 bg-rose-50 border border-rose-200 text-rose-700 p-4 rounded-xl flex items-start gap-3">
-                  <Icons.AlertTriangle size={20} className="flex-shrink-0 mt-0.5" />
+                  <Icons.AlertTriangle size={20} className="shrink-0 mt-0.5" />
                   <div>
                     <h3 className="font-bold text-sm">Time Slot Unavailable</h3>
                     <p className="text-xs opacity-80 mt-1">Someone else just booked that exact time slot. Please select a different time.</p>
@@ -229,7 +229,7 @@ export default async function AppointmentFormPage(props: {
 
               {hasDuplicateUserError && (
                 <div className="mb-8 bg-amber-50 border border-amber-200 text-amber-800 p-5 rounded-xl flex items-start gap-4 shadow-sm">
-                  <Icons.Info size={24} className="flex-shrink-0 mt-0.5 text-amber-600" />
+                  <Icons.Info size={24} className="shrink-0 mt-0.5 text-amber-600" />
                   <div>
                     <h3 className="font-bold text-base mb-1">You're Already Booked!</h3>
                     <p className="text-sm opacity-90 leading-relaxed">
@@ -258,7 +258,7 @@ export default async function AppointmentFormPage(props: {
                         <label 
                           key={time} 
                           title={isDisabled ? "Slot Unavailable" : "Available"}
-                          className={`relative flex items-center justify-center p-3 rounded-lg border text-sm font-bold transition-all ${isDisabled ? 'border-current/10 bg-current/5 opacity-40 cursor-not-allowed' : 'border-current/30 hover:border-current hover:bg-current/5 has-[:checked]:bg-[var(--booking-primary)] has-[:checked]:text-[var(--booking-card-bg)] has-[:checked]:border-[var(--booking-primary)] shadow-sm cursor-pointer'}`}
+                          className={`relative flex items-center justify-center p-3 rounded-lg border text-sm font-bold transition-all ${isDisabled ? 'border-current/10 bg-current/5 opacity-40 cursor-not-allowed' : 'border-current/30 hover:border-current hover:bg-current/5 has-[:checked]:bg-(--booking-primary) has-[:checked]:text-(--booking-card-bg) has-[:checked]:border-(--booking-primary) shadow-sm cursor-pointer'}`}
                         >
                           <input type="radio" name="time" value={time} required disabled={isDisabled} className="sr-only" />
                           {formatAmPm(time)}
@@ -280,11 +280,11 @@ export default async function AppointmentFormPage(props: {
                           </label>
 
                           {q.type === 'text' && (
-                            <input type="text" name={`prequal_${q.id}`} required={q.required} className="w-full px-4 py-3 bg-current/5 border border-current/20 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--booking-primary)] focus:border-transparent transition-all" />
+                            <input type="text" name={`prequal_${q.id}`} required={q.required} className="w-full px-4 py-3 bg-current/5 border border-current/20 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-(--booking-primary) focus:border-transparent transition-all" />
                           )}
 
                           {q.type === 'textarea' && (
-                            <textarea name={`prequal_${q.id}`} required={q.required} rows={3} className="w-full px-4 py-3 bg-current/5 border border-current/20 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--booking-primary)] focus:border-transparent transition-all resize-none" />
+                            <textarea name={`prequal_${q.id}`} required={q.required} rows={3} className="w-full px-4 py-3 bg-current/5 border border-current/20 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-(--booking-primary) focus:border-transparent transition-all resize-none" />
                           )}
 
                           {q.type === 'radio' && (
@@ -319,15 +319,15 @@ export default async function AppointmentFormPage(props: {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
                       <label className="text-xs font-bold uppercase opacity-60">First Name</label>
-                      <input type="text" name="firstName" required className="w-full px-4 py-3 bg-current/5 border border-current/20 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--booking-primary)] focus:border-transparent transition-all" />
+                      <input type="text" name="firstName" required className="w-full px-4 py-3 bg-current/5 border border-current/20 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-(--booking-primary) focus:border-transparent transition-all" />
                     </div>
                     <div className="space-y-2">
                       <label className="text-xs font-bold uppercase opacity-60">Last Name</label>
-                      <input type="text" name="lastName" required className="w-full px-4 py-3 bg-current/5 border border-current/20 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--booking-primary)] focus:border-transparent transition-all" />
+                      <input type="text" name="lastName" required className="w-full px-4 py-3 bg-current/5 border border-current/20 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-(--booking-primary) focus:border-transparent transition-all" />
                     </div>
                     <div className="space-y-2">
                       <label className="text-xs font-bold uppercase opacity-60">Email Address</label>
-                      <input type="email" name="email" required className="w-full px-4 py-3 bg-current/5 border border-current/20 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--booking-primary)] focus:border-transparent transition-all" />
+                      <input type="email" name="email" required className="w-full px-4 py-3 bg-current/5 border border-current/20 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-(--booking-primary) focus:border-transparent transition-all" />
                     </div>
                     
                     <div className="space-y-2">
@@ -336,7 +336,7 @@ export default async function AppointmentFormPage(props: {
                         <select 
                           name="countryCode" 
                           required 
-                          className="px-3 py-3 bg-current/5 border border-current/20 border-r-0 rounded-l-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--booking-primary)] focus:border-transparent transition-all font-medium appearance-none cursor-pointer"
+                          className="px-3 py-3 bg-current/5 border border-current/20 border-r-0 rounded-l-lg text-sm focus:outline-none focus:ring-2 focus:ring-(--booking-primary) focus:border-transparent transition-all font-medium appearance-none cursor-pointer"
                         >
                           {COUNTRY_CODES.map(c => (
                             <option key={c.code} value={c.code}>{c.label}</option>
@@ -347,18 +347,18 @@ export default async function AppointmentFormPage(props: {
                           name="phone" 
                           required 
                           placeholder="912 345 6789"
-                          className="w-full px-4 py-3 bg-current/5 border border-current/20 rounded-r-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--booking-primary)] focus:border-transparent transition-all" 
+                          className="w-full px-4 py-3 bg-current/5 border border-current/20 rounded-r-lg text-sm focus:outline-none focus:ring-2 focus:ring-(--booking-primary) focus:border-transparent transition-all" 
                         />
                       </div>
                     </div>
 
                     <div className="space-y-2 md:col-span-2">
                       <label className="text-xs font-bold uppercase opacity-60">Full Address</label>
-                      <textarea name="address" rows={2} className="w-full px-4 py-3 bg-current/5 border border-current/20 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--booking-primary)] focus:border-transparent transition-all resize-none" />
+                      <textarea name="address" rows={2} className="w-full px-4 py-3 bg-current/5 border border-current/20 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-(--booking-primary) focus:border-transparent transition-all resize-none" />
                     </div>
                     <div className="space-y-2 md:col-span-2">
                       <label className="text-xs font-bold uppercase opacity-60">Notes / Reason for Appointment</label>
-                      <textarea name="notes" rows={3} className="w-full px-4 py-3 bg-current/5 border border-current/20 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--booking-primary)] focus:border-transparent transition-all resize-none" />
+                      <textarea name="notes" rows={3} className="w-full px-4 py-3 bg-current/5 border border-current/20 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-(--booking-primary) focus:border-transparent transition-all resize-none" />
                     </div>
                   </div>
                 </section>

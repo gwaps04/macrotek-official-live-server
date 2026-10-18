@@ -64,7 +64,7 @@ export default function TestimonialsGrid({
 
   return (
     <section id="testimonials" className="w-full py-24 relative z-10 transition-colors duration-500" style={sectionStyles}>
-      <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-360 mx-auto px-4 sm:px-6 lg:px-8">
         
         <div className="text-center max-w-2xl mx-auto mb-16">
           <h2 className="font-semibold tracking-wide uppercase text-sm mb-3 opacity-80">
@@ -79,7 +79,7 @@ export default function TestimonialsGrid({
           {visibleItems.map((item) => (
             <div 
               key={item.id} 
-              className="rounded-2xl p-8 shadow-sm border border-current/5 flex flex-col justify-between transition-colors bg-[var(--card-bg)] text-[var(--card-text)]"
+              className="rounded-2xl p-8 shadow-sm border border-current/5 flex flex-col justify-between transition-colors bg-(--card-bg) text-(--card-text)"
             >
               <div className="flex text-amber-400 mb-6">
                 {[...Array(item.rating)].map((_, i) => (
@@ -93,11 +93,11 @@ export default function TestimonialsGrid({
               
               <div className="flex items-center gap-4 pt-4 border-t border-current/10">
                 {item.image_url ? (
-                  <div className="relative w-12 h-12 rounded-full overflow-hidden border border-current/10 flex-shrink-0">
+                  <div className="relative w-12 h-12 rounded-full overflow-hidden border border-current/10 shrink-0">
                     <Image src={item.image_url} alt={item.client_name} fill className="object-cover" />
                   </div>
                 ) : (
-                  <div className="w-12 h-12 rounded-full bg-current/5 flex items-center justify-center border border-current/10 flex-shrink-0">
+                  <div className="w-12 h-12 rounded-full bg-current/5 flex items-center justify-center border border-current/10 shrink-0">
                     <Icons.User size={20} className="opacity-50" />
                   </div>
                 )}

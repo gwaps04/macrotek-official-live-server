@@ -111,7 +111,7 @@ function createInitialStore(): MockStore {
       testimonials_card_bg: '#ffffff',
       testimonials_card_text: '#18181b',
       enable_appointments: true,
-      enable_enrollments: true,
+      enable_enrollments: false,
       n8n_appointment_webhook_url: null,
       n8n_enrollment_webhook_url: null,
       n8n_webhook_secret: null,

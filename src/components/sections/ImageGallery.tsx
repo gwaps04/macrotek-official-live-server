@@ -53,7 +53,7 @@ export default function ImageGallery({
 
   return (
     <section id="gallery" className="w-full py-24 relative z-10 transition-colors duration-500" style={sectionStyles}>
-      <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-360 mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Header */}
         <div className="text-center max-w-2xl mx-auto mb-16">
@@ -79,7 +79,7 @@ export default function ImageGallery({
               />
               
               {/* Editorial Gradient Overlay */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent opacity-60 group-hover:opacity-80 transition-opacity duration-300" />
+              <div className="absolute inset-0 bg-linear-to-t from-black/80 via-black/10 to-transparent opacity-60 group-hover:opacity-80 transition-opacity duration-300" />
               
               {/* Title Layer */}
               <div className="absolute inset-x-0 bottom-0 p-6 translate-y-2 group-hover:translate-y-0 transition-transform duration-300 ease-out">

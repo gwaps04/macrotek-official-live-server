@@ -83,7 +83,7 @@ export default async function StorefrontLayout({
         enableEnrollments={config.enable_enrollments}
       />
       
-      <main className="flex-grow w-full mt-16">
+      <main className="grow w-full mt-16">
         {children}
       </main>
       

@@ -99,7 +99,7 @@ export default function ContactSection({
 
   return (
     <section id="contact" className="w-full py-24 relative z-10 border-t border-black/5 transition-colors duration-500" style={sectionStyles}>
-      <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-360 mx-auto px-4 sm:px-6 lg:px-8">
         
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-stretch">
           
@@ -116,7 +116,7 @@ export default function ContactSection({
               {phone && (
                 <div className="flex items-start gap-4">
                   {/* WOZ FIX: Inherits text color natively, applies 5% opacity for background */}
-                  <div className="w-12 h-12 bg-current/5 border border-current/10 rounded-xl flex items-center justify-center flex-shrink-0">
+                  <div className="w-12 h-12 bg-current/5 border border-current/10 rounded-xl flex items-center justify-center shrink-0">
                     <Icons.Phone className="w-5 h-5 opacity-80" />
                   </div>
                   <div>
@@ -129,7 +129,7 @@ export default function ContactSection({
 
               {email && (
                 <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 bg-current/5 border border-current/10 rounded-xl flex items-center justify-center flex-shrink-0">
+                  <div className="w-12 h-12 bg-current/5 border border-current/10 rounded-xl flex items-center justify-center shrink-0">
                     <Icons.Mail className="w-5 h-5 opacity-80" />
                   </div>
                   <div>
@@ -141,12 +141,12 @@ export default function ContactSection({
 
               {address && (
                 <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 bg-current/5 border border-current/10 rounded-xl flex items-center justify-center flex-shrink-0">
+                  <div className="w-12 h-12 bg-current/5 border border-current/10 rounded-xl flex items-center justify-center shrink-0">
                     <Icons.MapPin className="w-5 h-5 opacity-80" />
                   </div>
                   <div>
                     <h4 className="text-sm font-bold uppercase tracking-wider mb-1 opacity-90">Location</h4>
-                    <p className="max-w-[280px] leading-relaxed opacity-80">{address}</p>
+                    <p className="max-w-70 leading-relaxed opacity-80">{address}</p>
                   </div>
                 </div>
               )}
@@ -183,7 +183,7 @@ export default function ContactSection({
             )}
           </div>
 
-          <div className="w-full h-[400px] lg:h-full min-h-[400px] lg:min-h-[600px] bg-current/5 rounded-3xl overflow-hidden border border-current/10 relative">
+          <div className="w-full h-100 lg:h-full min-h-100 lg:min-h-150 bg-current/5 rounded-3xl overflow-hidden border border-current/10 relative">
             {address ? (
               <iframe
                 title="Business Location"

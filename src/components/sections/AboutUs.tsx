@@ -57,7 +57,7 @@ export default function AboutUs({
 
   return (
     <section id="about-us" className="w-full py-24 relative z-10 transition-colors duration-500" style={dynamicStyles}>
-      <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-360 mx-auto px-4 sm:px-6 lg:px-8">
         
         <div className={`grid grid-cols-1 ${imageUrl ? 'lg:grid-cols-2 gap-12 lg:gap-16' : ''} items-center mb-24`}>
           <div className="space-y-6">
@@ -75,7 +75,7 @@ export default function AboutUs({
           </div>
 
           {imageUrl && (
-            <div className="relative w-full aspect-square lg:aspect-[4/3] rounded-2xl overflow-hidden shadow-2xl bg-black/5 border border-black/10">
+            <div className="relative w-full aspect-square lg:aspect-4/3 rounded-2xl overflow-hidden shadow-2xl bg-black/5 border border-black/10">
               <Image src={imageUrl} alt="About Us" fill className="object-cover object-center" />
             </div>
           )}

@@ -2,6 +2,7 @@ import { sql } from '@/lib/db';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import ColorPickerInput from '@/components/ui/ColorPickerInput';
+import OperatingModeSelector from '@/components/admin/OperatingModeSelector';
 import * as Icons from 'lucide-react';
 
 const FONT_OPTIONS = [
@@ -21,12 +22,20 @@ export default async function DashboardSettings() {
   const hasLogo = !!currentConfig.logo_url;
   const hasHeroMedia = !!currentConfig.hero_image_url;
 
+  // Single exclusive mode resolution (strictly either appointment or enrollment)
+  const initialOperatingMode = currentConfig.enable_enrollments && !currentConfig.enable_appointments 
+    ? 'enrollment' 
+    : 'appointment';
+
   async function updateConfigAction(formData: FormData) {
     "use server";
     
-    // WOZ LOGIC: Extracting the Engine Switches
-    const enableAppointments = formData.get('enableAppointments') === 'on';
-    const enableEnrollments = formData.get('enableEnrollments') === 'on';
+    // Mutually Exclusive Platform Operating Mode: strictly ONE mode can be active
+    const rawMode = (formData.get('operatingMode') as string) || 
+      (formData.get('enableEnrollments') === 'on' ? 'enrollment' : 'appointment');
+    
+    const enableAppointments = rawMode === 'appointment';
+    const enableEnrollments = rawMode === 'enrollment';
 
     const tenantName = (formData.get('tenantName') as string) || 'Default Brand';
     const heroTitle = (formData.get('heroTitle') as string) || '';
@@ -119,42 +128,9 @@ export default async function DashboardSettings() {
       <form action={updateConfigAction} className="space-y-8 bg-white p-8 rounded-2xl shadow-sm border border-zinc-200">
         
         {/* ==================================================== */}
-        {/* WOZ LOGIC: THE MASTER SWITCHBOARD IS HERE AT THE TOP */}
+        {/* MUTUALLY EXCLUSIVE PLATFORM OPERATING MODE SELECTOR  */}
         {/* ==================================================== */}
-        <section className="bg-zinc-900 p-8 rounded-xl border border-zinc-800 shadow-xl relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-500 to-indigo-500"></div>
-          <div className="flex items-center gap-3 mb-6 border-b border-zinc-800 pb-4">
-            <Icons.Cpu className="text-emerald-500 w-6 h-6" />
-            <div>
-              <h3 className="text-base font-bold text-white uppercase tracking-widest">Platform Operating Mode</h3>
-              <p className="text-xs text-zinc-400 mt-1">Toggle which engine controls the primary navigation CTA and Sidebar routing.</p>
-            </div>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <label className={`flex flex-col p-6 rounded-xl border-2 cursor-pointer transition-all ${currentConfig.enable_appointments ? 'bg-zinc-800 border-emerald-500' : 'bg-zinc-950 border-zinc-800 hover:border-zinc-600'}`}>
-              <div className="flex items-center justify-between mb-3">
-                <span className="font-bold text-white text-sm uppercase tracking-wider flex items-center gap-2">
-                  <Icons.CalendarClock size={18} className="text-emerald-500" />
-                  Appointment Engine
-                </span>
-                <input type="checkbox" name="enableAppointments" defaultChecked={currentConfig.enable_appointments} className="w-5 h-5 text-emerald-500 rounded focus:ring-emerald-500 bg-zinc-900 border-zinc-700 cursor-pointer" />
-              </div>
-              <span className="text-xs text-zinc-400 leading-relaxed">Activates 1-on-1 consultations, site inspections, and specific time-slot capacity blocks.</span>
-            </label>
-
-            <label className={`flex flex-col p-6 rounded-xl border-2 cursor-pointer transition-all ${currentConfig.enable_enrollments ? 'bg-zinc-800 border-indigo-500' : 'bg-zinc-950 border-zinc-800 hover:border-zinc-600'}`}>
-              <div className="flex items-center justify-between mb-3">
-                <span className="font-bold text-white text-sm uppercase tracking-wider flex items-center gap-2">
-                  <Icons.Users size={18} className="text-indigo-500" />
-                  Enrollment Engine
-                </span>
-                <input type="checkbox" name="enableEnrollments" defaultChecked={currentConfig.enable_enrollments} className="w-5 h-5 text-indigo-500 rounded focus:ring-indigo-500 bg-zinc-900 border-zinc-700 cursor-pointer" />
-              </div>
-              <span className="text-xs text-zinc-400 leading-relaxed">Activates group classes, gym rosters, review centers, and event capacity structures.</span>
-            </label>
-          </div>
-        </section>
+        <OperatingModeSelector initialMode={initialOperatingMode} />
 
         {/* Global Brand Settings */}
         <section>

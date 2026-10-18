@@ -35,10 +35,10 @@ export default function ClassScheduleList({ schedules }: ClassScheduleListProps)
         <div className="flex items-center justify-between mb-8">
           <h3 className="text-2xl font-bold font-display opacity-90">Upcoming Schedule</h3>
         </div>
-        <div className="text-center py-16 bg-[var(--class-card-bg)] rounded-2xl border border-current/10 shadow-sm" style={{ color: 'var(--class-primary)' }}>
+        <div className="text-center py-16 bg-(--class-card-bg) rounded-2xl border border-current/10 shadow-sm" style={{ color: 'var(--class-primary)' }}>
           <Icons.CalendarX size={48} className="mx-auto mb-4 opacity-30" />
-          <h3 className="text-2xl font-bold font-display opacity-90 mb-2 text-[var(--class-text)]">No Upcoming Sessions</h3>
-          <p className="opacity-60 text-[var(--class-text)] max-w-md mx-auto">
+          <h3 className="text-2xl font-bold font-display opacity-90 mb-2 text-(--class-text)">No Upcoming Sessions</h3>
+          <p className="opacity-60 text-(--class-text) max-w-md mx-auto">
             We currently do not have any specific dates scheduled for our classes. Please check back later or view our full curriculum below!
           </p>
         </div>
@@ -87,7 +87,7 @@ export default function ClassScheduleList({ schedules }: ClassScheduleListProps)
 
           return (
             <div key={dateStr} className="relative">
-              <div className="sticky top-20 z-20 flex items-center gap-4 mb-6 bg-[var(--class-card-bg)] py-2">
+              <div className="sticky top-20 z-20 flex items-center gap-4 mb-6 bg-(--class-card-bg) py-2">
                 <div className="flex flex-col border-l-4 pl-4 border-current">
                   <span className="text-sm font-bold uppercase tracking-widest opacity-60">{dayName}</span>
                   <span className="text-xl font-black font-display tracking-tight opacity-90">{monthDay}</span>
@@ -103,7 +103,7 @@ export default function ClassScheduleList({ schedules }: ClassScheduleListProps)
                     <div 
                       key={session.schedule_id}
                       style={{ color: 'var(--class-primary)' }}
-                      className="group flex flex-col md:flex-row items-stretch md:items-center justify-between p-4 md:p-6 rounded-2xl border border-current/10 bg-[var(--class-card-bg)] shadow-sm hover:shadow-md hover:border-current/30 transition-all duration-200"
+                      className="group flex flex-col md:flex-row items-stretch md:items-center justify-between p-4 md:p-6 rounded-2xl border border-current/10 bg-(--class-card-bg) shadow-sm hover:shadow-md hover:border-current/30 transition-all duration-200"
                     >
                       <div className="flex items-center gap-6 mb-4 md:mb-0">
                         <div className="flex flex-col items-center justify-center w-24 h-full border-r border-current/10 pr-6 text-current">
@@ -111,7 +111,7 @@ export default function ClassScheduleList({ schedules }: ClassScheduleListProps)
                           <span className="text-[10px] font-bold uppercase tracking-widest opacity-60">{formatTime(session.end_time)}</span>
                         </div>
                         
-                        <div className="w-12 h-12 rounded-xl bg-current/5 flex items-center justify-center flex-shrink-0 border border-current/10 overflow-hidden relative">
+                        <div className="w-12 h-12 rounded-xl bg-current/5 flex items-center justify-center shrink-0 border border-current/10 overflow-hidden relative">
                           {session.image_url ? (
                             <Image src={session.image_url} alt={session.title} fill className="object-cover opacity-90" />
                           ) : (
@@ -120,7 +120,7 @@ export default function ClassScheduleList({ schedules }: ClassScheduleListProps)
                         </div>
 
                         <div>
-                          <h4 style={{ color: 'var(--class-text)' }} className="font-bold text-lg leading-tight mb-1 group-hover:text-[var(--class-primary)] transition-colors">
+                          <h4 style={{ color: 'var(--class-text)' }} className="font-bold text-lg leading-tight mb-1 group-hover:text-(--class-primary) transition-colors">
                             {session.title}
                           </h4>
                           <div className="flex items-center gap-3 text-xs font-medium opacity-60" style={{ color: 'var(--class-text)' }}>

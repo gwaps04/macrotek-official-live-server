@@ -2,7 +2,7 @@ import { sql } from '@/lib/db';
 import Link from 'next/link';
 import * as Icons from 'lucide-react';
 import ClassScheduleList, { ScheduledClass } from '@/components/sections/ClassScheduleList';
-import { CSSProperties } from 'react';
+import React, { CSSProperties } from 'react';
 import Image from 'next/image';
 
 export const dynamic = 'force-dynamic';
@@ -56,7 +56,7 @@ export default async function ClassesPage() {
 
   return (
     <div className="w-full min-h-[80vh] py-12 md:py-24 relative z-10 transition-colors duration-500" style={pageStyles}>
-      <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-360 mx-auto px-4 sm:px-6 lg:px-8">
         
         <div className="mb-16 text-center max-w-2xl mx-auto">
           <h1 className="text-3xl md:text-5xl font-bold font-display mb-4 leading-tight">
@@ -68,7 +68,7 @@ export default async function ClassesPage() {
         </div>
 
         {!isEngineActive ? (
-          <div className="min-h-[40vh] flex flex-col items-center justify-center bg-[var(--class-card-bg)] rounded-2xl shadow-sm border border-current/10 p-12 max-w-3xl mx-auto text-center">
+          <div className="min-h-[40vh] flex flex-col items-center justify-center bg-(--class-card-bg) rounded-2xl shadow-sm border border-current/10 p-12 max-w-3xl mx-auto text-center">
             <div className="w-16 h-16 bg-current/5 border border-current/10 rounded-full flex items-center justify-center mb-6 opacity-60">
               <Icons.UserX size={32} />
             </div>
@@ -76,12 +76,12 @@ export default async function ClassesPage() {
             <p className="opacity-70 max-w-md mx-auto mb-8">
               We are not accepting new class enrollments at this time. Please check back later.
             </p>
-            <Link href="/" className="px-6 py-3 bg-[var(--class-primary)] text-[var(--class-card-bg)] rounded-lg font-medium hover:opacity-90 transition-opacity shadow-sm">
+            <Link href="/" className="px-6 py-3 bg-(--class-primary) text-(--class-card-bg) rounded-lg font-medium hover:opacity-90 transition-opacity shadow-sm">
               Return to Storefront
             </Link>
           </div>
         ) : (
-          <>
+          <React.Fragment>
             {/* WOZ FIX: Added an ID here so the buttons below can smoothly scroll the user up! */}
             <div id="upcoming-schedule" className="scroll-mt-32">
               <ClassScheduleList schedules={scheduledClasses} />
@@ -98,7 +98,7 @@ export default async function ClassesPage() {
                 return (
                   <div 
                     key={cls.id} 
-                    className="flex flex-col rounded-2xl bg-[var(--class-card-bg)] shadow-sm hover:shadow-xl border border-current/5 overflow-hidden transition-all duration-300 hover:-translate-y-1 group"
+                    className="flex flex-col rounded-2xl bg-(--class-card-bg) shadow-sm hover:shadow-xl border border-current/5 overflow-hidden transition-all duration-300 hover:-translate-y-1 group"
                     style={{ color: 'var(--class-primary)' }}
                   >
                     <div className="relative w-full h-48 bg-current/5 flex items-center justify-center border-b border-current/10">
@@ -107,14 +107,14 @@ export default async function ClassesPage() {
                       ) : (
                         <Icon className="w-16 h-16 opacity-30" strokeWidth={1} />
                       )}
-                      <div className="absolute top-4 right-4 bg-[var(--class-card-bg)] text-current text-xs font-bold px-3 py-1.5 rounded-full shadow-lg border border-current/10 flex items-center gap-1.5">
+                      <div className="absolute top-4 right-4 bg-(--class-card-bg) text-current text-xs font-bold px-3 py-1.5 rounded-full shadow-lg border border-current/10 flex items-center gap-1.5">
                         <Icons.Users size={12} /> Max {cls.max_capacity}
                       </div>
                     </div>
 
                     <div className="p-8 flex-1 flex flex-col" style={{ color: 'var(--class-text)' }}>
                       <div className="mb-6">
-                        <h3 className="text-2xl font-bold font-display mb-2 text-current leading-tight group-hover:text-[var(--class-primary)] transition-colors">{cls.title}</h3>
+                        <h3 className="text-2xl font-bold font-display mb-2 text-current leading-tight group-hover:text-(--class-primary) transition-colors">{cls.title}</h3>
                         <p className="text-sm font-semibold opacity-70 flex items-center gap-1.5">
                           <Icons.UserCheck size={14} /> Instructed by {cls.instructor_name}
                         </p>
@@ -134,7 +134,7 @@ export default async function ClassesPage() {
                         {/* WOZ FIX: Added the Anchor Button so users aren't confused! */}
                         <a 
                           href="#upcoming-schedule" 
-                          className="px-4 py-2 border-2 border-current rounded-lg text-xs font-bold hover:bg-current hover:text-[var(--class-card-bg)] transition-colors"
+                          className="px-4 py-2 border-2 border-current rounded-lg text-xs font-bold hover:bg-current hover:text-(--class-card-bg) transition-colors"
                         >
                           View Dates
                         </a>
@@ -145,7 +145,7 @@ export default async function ClassesPage() {
                 );
               })}
             </div>
-          </>
+          </React.Fragment>
         )}
       </div>
     </div>

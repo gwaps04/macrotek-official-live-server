@@ -56,13 +56,14 @@ export default function AdminSidebar({ enableAppointments, enableEnrollments }: 
     { name: 'Leads Command Center', href: '/dashboard/leads', icon: Icons.Inbox, isHighlight: true }
   ];
   
-  if (enableAppointments) {
-    inboundAndRevenueItems.push({ name: 'Appointment Calendar', href: '/dashboard/booking', icon: Icons.CalendarCheck, isHighlight: false });
-  }
-  
-  if (enableEnrollments) {
+  // Single Active Platform Operating Mode: strictly either appointment or enrollment
+  const isEnrollmentMode = Boolean(enableEnrollments && !enableAppointments);
+
+  if (isEnrollmentMode) {
     inboundAndRevenueItems.push({ name: 'Class Curriculum', href: '/dashboard/classes', icon: Icons.GraduationCap, isHighlight: false });
     inboundAndRevenueItems.push({ name: 'Class Calendar', href: '/dashboard/class-schedule', icon: Icons.CalendarDays, isHighlight: true });
+  } else {
+    inboundAndRevenueItems.push({ name: 'Appointment Calendar', href: '/dashboard/booking', icon: Icons.CalendarCheck, isHighlight: false });
   }
 
   NAV_GROUPS.push({
@@ -80,7 +81,7 @@ export default function AdminSidebar({ enableAppointments, enableEnrollments }: 
 
   return (
     <React.Fragment>
-      <div className="lg:hidden flex items-center justify-between bg-zinc-950 text-white p-4 border-b border-zinc-800 flex-shrink-0">
+      <div className="lg:hidden flex items-center justify-between bg-zinc-950 text-white p-4 border-b border-zinc-800 shrink-0">
         <div className="flex items-center gap-2 font-display font-bold tracking-widest uppercase text-sm">
           <Icons.ShieldCheck className="text-emerald-500" size={18} /> Admin
         </div>
@@ -98,7 +99,7 @@ export default function AdminSidebar({ enableAppointments, enableEnrollments }: 
 
       <aside className={`fixed lg:sticky top-0 h-screen inset-y-0 left-0 z-50 w-64 bg-zinc-950 border-r border-zinc-800 transition-transform duration-300 ease-in-out flex flex-col ${isOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}>
         
-        <div className="hidden lg:flex h-16 items-center px-6 border-b border-zinc-800/50 flex-shrink-0">
+        <div className="hidden lg:flex h-16 items-center px-6 border-b border-zinc-800/50 shrink-0">
           <div className="flex items-center gap-2 font-display font-bold tracking-widest uppercase text-sm text-white">
             <Icons.ShieldCheck className="text-emerald-500" size={18} /> Command Center
           </div>
@@ -146,7 +147,7 @@ export default function AdminSidebar({ enableAppointments, enableEnrollments }: 
           ))}
         </nav>
 
-        <div className="p-4 border-t border-zinc-800/50 flex-shrink-0 flex flex-col gap-2">
+        <div className="p-4 border-t border-zinc-800/50 shrink-0 flex flex-col gap-2">
           <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-zinc-900/50 border border-zinc-800">
             <div className="w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-500 flex items-center justify-center font-bold text-xs">
               AD

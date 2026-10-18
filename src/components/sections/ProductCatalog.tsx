@@ -86,12 +86,12 @@ export default function ProductCatalog({
       : { backgroundColor: bgColor }),
   };
 
-  // WOZ LOGIC: Determine the target route based on active engines
-  const targetRoute = enableAppointments ? "/book" : enableEnrollments ? "/classes" : "/contact";
+  // Single Active Operating Mode target route: strictly /classes (enrollment) or /book (appointment)
+  const targetRoute = (enableEnrollments && !enableAppointments) ? "/classes" : "/book";
 
   return (
     <section id="products" className="w-full py-24 relative z-10 transition-colors duration-500" style={sectionStyles}>
-      <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-360 mx-auto px-4 sm:px-6 lg:px-8">
         
         <div className="text-center max-w-2xl mx-auto mb-16">
           <h2 className="font-semibold tracking-wide uppercase text-sm mb-3 opacity-80">
@@ -135,9 +135,9 @@ export default function ProductCatalog({
                     <div 
                       key={item.id} 
                       style={cardInlineStyle}
-                      className="rounded-2xl border border-black/5 shadow-sm overflow-hidden flex flex-col hover:border-emerald-500 transition-colors bg-[var(--card-bg)] text-[var(--card-text)] font-[family-name:var(--card-font)]"
+                      className="rounded-2xl border border-black/5 shadow-sm overflow-hidden flex flex-col hover:border-emerald-500 transition-colors bg-(--card-bg) text-(--card-text) font-(family-name:--card-font)"
                     >
-                      <div className="relative w-full h-48 bg-black/5 flex items-center justify-center overflow-hidden flex-shrink-0 border-b border-black/5">
+                      <div className="relative w-full h-48 bg-black/5 flex items-center justify-center overflow-hidden shrink-0 border-b border-black/5">
                         {item.image_url ? (
                           <Image src={item.image_url} alt={item.title} fill className="object-cover opacity-90" />
                         ) : (

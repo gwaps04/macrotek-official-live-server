@@ -36,6 +36,10 @@ export default function ContractPageView({ initialContract }: ContractPageViewPr
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
+  // PDF Download & Generation State
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [pdfDownloadFeedback, setPdfDownloadFeedback] = useState(false);
+
   const isSigned = contract.status === 'Signed';
 
   // Check if access code is saved in sessionStorage or matches URL query
@@ -96,8 +100,110 @@ export default function ContractPageView({ initialContract }: ContractPageViewPr
     }
   };
 
-  const handlePrintDownload = () => {
-    window.print();
+  // Helper to dynamically load html2pdf from node_modules or CDN
+  const getPdfGenerator = async (): Promise<any> => {
+    if (typeof window === 'undefined') return null;
+
+    // 1. Check window global
+    if ((window as any).html2pdf) {
+      return (window as any).html2pdf;
+    }
+
+    // 2. Try dynamic import from node_modules if present
+    try {
+      const html2pdfModule = await import('html2pdf.js');
+      const gen = html2pdfModule.default || html2pdfModule;
+      if (gen) return gen;
+    } catch {
+      // If not present in local node_modules, fall through to CDN script injection
+    }
+
+    // 3. Dynamic script injection from CDN
+    return new Promise((resolve, reject) => {
+      const existing = document.getElementById('html2pdf-script') as HTMLScriptElement;
+      if (existing) {
+        if ((window as any).html2pdf) {
+          resolve((window as any).html2pdf);
+        } else {
+          existing.addEventListener('load', () => resolve((window as any).html2pdf));
+          existing.addEventListener('error', () => reject(new Error('Failed to load html2pdf')));
+        }
+        return;
+      }
+
+      const script = document.createElement('script');
+      script.id = 'html2pdf-script';
+      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
+      script.async = true;
+      script.onload = () => {
+        if ((window as any).html2pdf) {
+          resolve((window as any).html2pdf);
+        } else {
+          reject(new Error('html2pdf failed to initialize on window'));
+        }
+      };
+      script.onerror = () => reject(new Error('Failed to load html2pdf script'));
+      document.head.appendChild(script);
+    });
+  };
+
+  // Direct Client-Side PDF Generation & Instant File Download
+  const handleDownloadPdf = async () => {
+    if (typeof window === 'undefined') return;
+    const element = document.getElementById('contract-document');
+    if (!element) {
+      handleNativePrint();
+      return;
+    }
+
+    setIsGeneratingPdf(true);
+    try {
+      const html2pdf = await getPdfGenerator();
+      if (!html2pdf) {
+        throw new Error('PDF generator unavailable');
+      }
+
+      const safeClient = (contract.client_name || 'Client').trim().replace(/[^a-zA-Z0-9_-]/g, '_');
+      const safeTitle = (contract.contract_title || 'Master_Service_Agreement').trim().replace(/[^a-zA-Z0-9_-]/g, '_');
+      const filename = `${safeTitle}_${safeClient}.pdf`;
+
+      const opt = {
+        margin: [10, 10, 10, 10] as [number, number, number, number],
+        filename: filename,
+        image: { type: 'jpeg' as const, quality: 0.98 },
+        html2canvas: { 
+          scale: 2, 
+          useCORS: true, 
+          letterRendering: true,
+          logging: false 
+        },
+        jsPDF: { unit: 'mm' as const, format: 'a4' as const, orientation: 'portrait' as const },
+        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+      };
+
+      await html2pdf().set(opt).from(element).save();
+      setPdfDownloadFeedback(true);
+      setTimeout(() => setPdfDownloadFeedback(false), 3000);
+    } catch (err) {
+      console.warn('Direct PDF download fallback to window.print():', err);
+      handleNativePrint();
+    } finally {
+      setIsGeneratingPdf(false);
+    }
+  };
+
+  // High-fidelity native vector print & browser Save as PDF
+  const handleNativePrint = () => {
+    if (typeof window !== 'undefined') {
+      const originalTitle = document.title;
+      const safeClient = (contract.client_name || 'Client').trim();
+      const safeTitle = (contract.contract_title || 'Master Service Agreement').trim();
+      document.title = `${safeTitle} - ${safeClient}`;
+      window.print();
+      setTimeout(() => {
+        document.title = originalTitle;
+      }, 1000);
+    }
   };
 
   const handleCopyLink = () => {
@@ -286,7 +392,7 @@ export default function ContractPageView({ initialContract }: ContractPageViewPr
           <div className="flex items-center gap-2">
             <button
               onClick={handleCopyLink}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-zinc-200 hover:bg-zinc-50 text-xs font-semibold text-zinc-700 transition-colors shadow-2xs"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-zinc-200 hover:bg-zinc-50 text-xs font-semibold text-zinc-700 transition-colors shadow-2xs cursor-pointer"
             >
               {copyFeedback ? (
                 <React.Fragment>
@@ -302,11 +408,35 @@ export default function ContractPageView({ initialContract }: ContractPageViewPr
             </button>
 
             <button
-              onClick={handlePrintDownload}
-              className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-bold transition-colors shadow-xs"
+              onClick={handleNativePrint}
+              title="Print document or Save as PDF via browser"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-zinc-200 hover:bg-zinc-50 text-xs font-semibold text-zinc-700 transition-colors shadow-2xs cursor-pointer"
             >
-              <Icons.Download size={13} />
-              <span>Download / Print PDF</span>
+              <Icons.Printer size={13} className="text-zinc-500" />
+              <span>Print</span>
+            </button>
+
+            <button
+              onClick={handleDownloadPdf}
+              disabled={isGeneratingPdf}
+              className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 disabled:opacity-60 text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
+            >
+              {isGeneratingPdf ? (
+                <React.Fragment>
+                  <Icons.Loader2 size={13} className="animate-spin text-emerald-400" />
+                  <span>Generating PDF...</span>
+                </React.Fragment>
+              ) : pdfDownloadFeedback ? (
+                <React.Fragment>
+                  <Icons.Check size={13} className="text-emerald-400" />
+                  <span className="text-emerald-300">PDF Downloaded!</span>
+                </React.Fragment>
+              ) : (
+                <React.Fragment>
+                  <Icons.Download size={13} />
+                  <span>Download PDF</span>
+                </React.Fragment>
+              )}
             </button>
           </div>
 
@@ -332,13 +462,37 @@ export default function ContractPageView({ initialContract }: ContractPageViewPr
                 </p>
               </div>
             </div>
-            <button
-              onClick={handlePrintDownload}
-              className="px-3.5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-xl shrink-0 transition-colors flex items-center gap-1.5"
-            >
-              <Icons.Printer size={13} />
-              <span>Print / Save PDF</span>
-            </button>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={handleNativePrint}
+                className="px-3 py-2 bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-semibold rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer"
+              >
+                <Icons.Printer size={13} />
+                <span>Print</span>
+              </button>
+              <button
+                onClick={handleDownloadPdf}
+                disabled={isGeneratingPdf}
+                className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white font-bold text-xs rounded-xl shrink-0 transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer"
+              >
+                {isGeneratingPdf ? (
+                  <React.Fragment>
+                    <Icons.Loader2 size={13} className="animate-spin" />
+                    <span>Generating...</span>
+                  </React.Fragment>
+                ) : pdfDownloadFeedback ? (
+                  <React.Fragment>
+                    <Icons.Check size={13} />
+                    <span>Downloaded!</span>
+                  </React.Fragment>
+                ) : (
+                  <React.Fragment>
+                    <Icons.Download size={13} />
+                    <span>Download PDF</span>
+                  </React.Fragment>
+                )}
+              </button>
+            </div>
           </div>
         )}
 

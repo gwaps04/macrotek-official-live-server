@@ -52,7 +52,7 @@ export default function Footer({
 
   return (
     <footer className="pt-20 pb-10 border-t border-current/10 transition-colors duration-500" style={footerStyles}>
-      <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-360 mx-auto px-4 sm:px-6 lg:px-8">
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-12 lg:gap-8 mb-16">
           

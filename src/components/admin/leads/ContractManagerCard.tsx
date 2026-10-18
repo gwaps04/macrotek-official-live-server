@@ -117,8 +117,8 @@ export default function ContractManagerCard({ lead, onRefresh, onUpdateLead }: C
     ? Math.max(0, numericCost - (numericDownpaymentPct !== null ? downpaymentAmount : 0)) 
     : 0;
 
-  // Contract URL
-  const contractPath = `/contract/${lead.id}?type=${lead.type}`;
+  // Contract URL (includes authorized access code for instant admin view)
+  const contractPath = `/contract/${lead.id}?type=${lead.type}${accessCode ? `&code=${encodeURIComponent(accessCode)}` : ''}`;
   const contractUrl = typeof window !== 'undefined'
     ? `${window.location.origin}${contractPath}`
     : contractPath;

@@ -159,7 +159,7 @@ export default async function ClassEnrollmentPage(props: {
 
   return (
     <div className="flex flex-col min-h-[80vh] transition-colors duration-500" style={pageStyles}>
-      <main className="flex-grow w-full py-12 md:py-24">
+      <main className="grow w-full py-12 md:py-24">
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
           
           <Link href="/classes" className="inline-flex items-center gap-2 text-sm font-bold opacity-60 hover:opacity-100 transition-opacity mb-8" style={{ color: 'var(--class-primary)' }}>
@@ -167,20 +167,20 @@ export default async function ClassEnrollmentPage(props: {
           </Link>
 
           {isSuccess ? (
-            <div className="bg-[var(--class-card-bg)] border border-current/10 rounded-2xl p-8 md:p-12 text-center max-w-2xl mx-auto shadow-sm" style={{ color: 'var(--class-primary)' }}>
+            <div className="bg-(--class-card-bg) border border-current/10 rounded-2xl p-8 md:p-12 text-center max-w-2xl mx-auto shadow-sm" style={{ color: 'var(--class-primary)' }}>
               <div className="w-20 h-20 bg-current/10 rounded-full flex items-center justify-center mx-auto mb-6 text-current">
                 <Icons.CheckCircle2 size={40} />
               </div>
               
-              <h1 className="text-3xl font-bold font-display mb-3 text-[var(--class-text)]">Registration Confirmed!</h1>
+              <h1 className="text-3xl font-bold font-display mb-3 text-(--class-text)">Registration Confirmed!</h1>
               
-              <p className="text-[var(--class-text)] text-lg opacity-80 mb-8">
+              <p className="text-(--class-text) text-lg opacity-80 mb-8">
                 You are successfully enrolled in <strong className="text-current">{session.title}</strong> for <br className="sm:hidden"/>
                 <strong className="text-current font-mono tracking-tight">{displayDate}</strong>. We have reserved your spot.
               </p>
 
-              <div className="bg-current/5 border border-current/10 rounded-xl p-6 mb-8 text-left max-w-md mx-auto text-[var(--class-text)] flex items-start gap-4">
-                <div className="w-10 h-10 rounded-full bg-[var(--class-card-bg)] shadow-sm flex items-center justify-center flex-shrink-0" style={{ color: 'var(--class-primary)' }}>
+              <div className="bg-current/5 border border-current/10 rounded-xl p-6 mb-8 text-left max-w-md mx-auto text-(--class-text) flex items-start gap-4">
+                <div className="w-10 h-10 rounded-full bg-(--class-card-bg) shadow-sm flex items-center justify-center shrink-0" style={{ color: 'var(--class-primary)' }}>
                   <Icons.Mail size={20} />
                 </div>
                 <div>
@@ -191,7 +191,7 @@ export default async function ClassEnrollmentPage(props: {
                 </div>
               </div>
 
-              <Link href="/classes" className="inline-block bg-[var(--class-primary)] text-[var(--class-card-bg)] hover:opacity-90 transition-opacity px-8 py-3 rounded-xl font-bold shadow-sm">
+              <Link href="/classes" className="inline-block bg-(--class-primary) text-(--class-card-bg) hover:opacity-90 transition-opacity px-8 py-3 rounded-xl font-bold shadow-sm">
                 Return to Schedule
               </Link>
             </div>
@@ -199,7 +199,7 @@ export default async function ClassEnrollmentPage(props: {
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
               
               <div className="lg:col-span-5 order-2 lg:order-1">
-                <div className="bg-[var(--class-card-bg)] rounded-2xl shadow-sm border border-current/10 overflow-hidden sticky top-24" style={{ color: 'var(--class-primary)' }}>
+                <div className="bg-(--class-card-bg) rounded-2xl shadow-sm border border-current/10 overflow-hidden sticky top-24" style={{ color: 'var(--class-primary)' }}>
                   
                   <div className="relative w-full h-48 bg-current/5 border-b border-current/10 flex items-center justify-center">
                     {session.image_url ? (
@@ -243,7 +243,7 @@ export default async function ClassEnrollmentPage(props: {
               </div>
 
               <div className="lg:col-span-7 order-1 lg:order-2">
-                <div className="bg-[var(--class-card-bg)] p-8 md:p-10 rounded-2xl shadow-sm border border-current/10" style={{ color: 'var(--class-text)' }}>
+                <div className="bg-(--class-card-bg) p-8 md:p-10 rounded-2xl shadow-sm border border-current/10" style={{ color: 'var(--class-text)' }}>
                   
                   <div className="mb-8">
                     <h2 className="text-2xl font-bold font-display mb-2">
@@ -266,7 +266,7 @@ export default async function ClassEnrollmentPage(props: {
 
                   {hasConflictError && (
                     <div className="mb-8 bg-rose-50 border border-rose-200 text-rose-700 p-4 rounded-xl flex items-start gap-3">
-                      <Icons.AlertTriangle size={20} className="flex-shrink-0 mt-0.5" />
+                      <Icons.AlertTriangle size={20} className="shrink-0 mt-0.5" />
                       <div>
                         <h3 className="font-bold text-sm">Class is Full</h3>
                         <p className="text-xs opacity-80 mt-1">Someone else just claimed the final seat. Please check the schedule for other available dates.</p>
@@ -276,7 +276,7 @@ export default async function ClassEnrollmentPage(props: {
 
                   {hasDuplicateUserError && (
                     <div className="mb-8 bg-amber-50 border border-amber-200 text-amber-800 p-5 rounded-xl flex items-start gap-4 shadow-sm">
-                      <Icons.Info size={24} className="flex-shrink-0 mt-0.5 text-amber-600" />
+                      <Icons.Info size={24} className="shrink-0 mt-0.5 text-amber-600" />
                       <div>
                         <h3 className="font-bold text-base mb-1">You're Already Enrolled!</h3>
                         <p className="text-sm opacity-90 leading-relaxed">
@@ -293,23 +293,23 @@ export default async function ClassEnrollmentPage(props: {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-2">
                           <label className="text-xs font-bold uppercase tracking-widest opacity-60">First Name</label>
-                          <input type="text" name="firstName" required className="w-full px-4 py-3 bg-current/5 border border-current/20 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--class-primary)] focus:border-transparent transition-all" />
+                          <input type="text" name="firstName" required className="w-full px-4 py-3 bg-current/5 border border-current/20 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-(--class-primary) focus:border-transparent transition-all" />
                         </div>
                         <div className="space-y-2">
                           <label className="text-xs font-bold uppercase tracking-widest opacity-60">Last Name</label>
-                          <input type="text" name="lastName" required className="w-full px-4 py-3 bg-current/5 border border-current/20 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--class-primary)] focus:border-transparent transition-all" />
+                          <input type="text" name="lastName" required className="w-full px-4 py-3 bg-current/5 border border-current/20 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-(--class-primary) focus:border-transparent transition-all" />
                         </div>
                       </div>
 
                       <div className="space-y-2">
                         <label className="text-xs font-bold uppercase tracking-widest opacity-60">Full Address</label>
-                        <textarea name="address" required rows={2} placeholder="House No, Street, Brgy, City" className="w-full px-4 py-3 bg-current/5 border border-current/20 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--class-primary)] focus:border-transparent transition-all resize-none" />
+                        <textarea name="address" required rows={2} placeholder="House No, Street, Brgy, City" className="w-full px-4 py-3 bg-current/5 border border-current/20 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-(--class-primary) focus:border-transparent transition-all resize-none" />
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-2">
                           <label className="text-xs font-bold uppercase tracking-widest opacity-60">Email Address</label>
-                          <input type="email" name="email" required className="w-full px-4 py-3 bg-current/5 border border-current/20 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--class-primary)] focus:border-transparent transition-all" />
+                          <input type="email" name="email" required className="w-full px-4 py-3 bg-current/5 border border-current/20 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-(--class-primary) focus:border-transparent transition-all" />
                         </div>
                         
                         <div className="space-y-2">
@@ -318,7 +318,7 @@ export default async function ClassEnrollmentPage(props: {
                             <select 
                               name="countryCode" 
                               required 
-                              className="px-3 py-3 bg-current/5 border border-current/20 border-r-0 rounded-l-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--class-primary)] focus:border-transparent transition-all font-medium appearance-none cursor-pointer"
+                              className="px-3 py-3 bg-current/5 border border-current/20 border-r-0 rounded-l-lg text-sm focus:outline-none focus:ring-2 focus:ring-(--class-primary) focus:border-transparent transition-all font-medium appearance-none cursor-pointer"
                             >
                               {COUNTRY_CODES.map(c => (
                                 <option key={c.code} value={c.code}>{c.label}</option>
@@ -329,7 +329,7 @@ export default async function ClassEnrollmentPage(props: {
                               name="phone" 
                               required 
                               placeholder="912 345 6789"
-                              className="w-full px-4 py-3 bg-current/5 border border-current/20 rounded-r-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--class-primary)] focus:border-transparent transition-all" 
+                              className="w-full px-4 py-3 bg-current/5 border border-current/20 rounded-r-lg text-sm focus:outline-none focus:ring-2 focus:ring-(--class-primary) focus:border-transparent transition-all" 
                             />
                           </div>
                         </div>
