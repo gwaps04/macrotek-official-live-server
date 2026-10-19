@@ -61,12 +61,13 @@ export default function LeadDetailModal({ lead, onClose, onRefresh, onUpdateLead
     setTimeout(() => setCopyFeedback(null), 3000);
   };
 
-  const contractPath = `/contract/${lead.id}?type=${lead.type}`;
+  const accessCode = lead.contractAccessCode || '';
+  const contractPath = `/contract/${lead.id}?type=${lead.type}${accessCode ? `&code=${encodeURIComponent(accessCode)}` : ''}`;
   const contractUrl = typeof window !== 'undefined' 
     ? `${window.location.origin}${contractPath}` 
     : contractPath;
 
-  const codeSnippet = lead.contractAccessCode ? ` | Access Code: ${lead.contractAccessCode}` : '';
+  const codeSnippet = accessCode ? ` | Access Code: ${accessCode}` : '';
 
   const handleCopyContractLink = () => {
     navigator.clipboard.writeText(`${contractUrl}${codeSnippet}`);
@@ -220,6 +221,63 @@ export default function LeadDetailModal({ lead, onClose, onRefresh, onUpdateLead
             <div className={`p-3 border rounded-xl text-xs font-medium flex items-center gap-2 ${webhookFeedback.success ? 'bg-indigo-50 border-indigo-200 text-indigo-800' : 'bg-red-50 border-red-200 text-red-800'}`}>
               <Icons.Info size={16} className="shrink-0" />
               {webhookFeedback.msg}
+            </div>
+          )}
+
+          {/* Prominent Signed Contract Notification Banner */}
+          {lead.contractStatus === 'Signed' && (
+            <div className="p-4.5 bg-emerald-50 border-2 border-emerald-400/80 rounded-2xl space-y-3 shadow-xs">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                    <Icons.ShieldCheck size={22} />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-[10px] uppercase font-black tracking-wider px-2 py-0.5 rounded-md bg-emerald-200 text-emerald-900">
+                        {lead.contractSigningMethod === 'manual_hardcopy' || lead.contractAttachmentUrl ? 'Hardcopy Executed' : 'Electronically Signed'}
+                      </span>
+                      <span className="text-xs font-bold text-emerald-950">
+                        {lead.contractTitle || 'Master Service Agreement'}
+                      </span>
+                    </div>
+                    <p className="text-xs text-emerald-800 mt-1">
+                      Executed by <strong className="text-emerald-950">{lead.contractSignedBy || lead.fullName}</strong>
+                      {lead.contractSignedByTitle ? ` (${lead.contractSignedByTitle})` : ''}
+                      {lead.contractSignedAt ? ` on ${new Date(lead.contractSignedAt).toLocaleString()}` : ''}.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <Link
+                    href={contractPath}
+                    target="_blank"
+                    className="px-3.5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs rounded-xl transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer"
+                  >
+                    <Icons.ExternalLink size={13} />
+                    <span>View &amp; Download Signed PDF</span>
+                  </Link>
+                </div>
+              </div>
+
+              {/* Signature Stroke Thumbnail if Electronic */}
+              {lead.contractSignatureData && (
+                <div className="p-2.5 bg-white rounded-xl border border-emerald-200 flex items-center justify-between gap-4">
+                  <div className="text-[11px] text-zinc-500 font-medium">
+                    <span className="font-bold text-zinc-800 block">Digital Signature on Record:</span>
+                    <span>Verified via secure client e-sign session</span>
+                  </div>
+                  <div className="h-10 px-3 bg-zinc-50 border border-zinc-200 rounded-lg flex items-center justify-center">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={lead.contractSignatureData}
+                      alt="Client Signature"
+                      className="max-h-8 w-auto object-contain"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

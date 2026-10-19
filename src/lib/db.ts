@@ -1257,6 +1257,18 @@ function processMockQuery(strings: TemplateStringsArray | string | string[], val
             else if (field === 'access_code' && val) c.access_code = String(val);
             else if (field === 'status' && val) c.status = val;
             else if (field === 'esign_enabled' && val !== undefined) c.esign_enabled = Boolean(val);
+            else if ((field === 'signature_data' || field === 'signature_svg') && val) {
+              c.signature_data = val;
+              c.signature_svg = val;
+            }
+            else if (field === 'signature_type' && val) c.signature_type = val;
+            else if (field === 'signed_at' && val) c.signed_at = val;
+            else if ((field === 'signed_by_name' || field === 'signed_by') && val) {
+              c.signed_by_name = val;
+              c.signed_by = val;
+            }
+            else if (field === 'signed_by_title' && val) c.signed_by_title = val;
+            else if (field === 'signing_method' && val) c.signing_method = val;
           }
         }
 

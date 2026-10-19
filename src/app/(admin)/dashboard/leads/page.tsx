@@ -45,11 +45,17 @@ export default async function LeadsCommandCenterPage() {
     `
   ]);
 
-  // Index contracts by lead_id
+  // Index contracts by lead_id (prefer Signed contracts and preserve newest)
   const contractMap = new Map<string, any>();
   contractsResult.forEach((c: any) => {
     if (c.lead_id) {
-      contractMap.set(String(c.lead_id), c);
+      const key = String(c.lead_id);
+      const existing = contractMap.get(key);
+      if (!existing) {
+        contractMap.set(key, c);
+      } else if (existing.status !== 'Signed' && c.status === 'Signed') {
+        contractMap.set(key, c);
+      }
     }
   });
 
@@ -113,6 +119,8 @@ export default async function LeadsCommandCenterPage() {
       contractSignedAt: c ? c.signed_at : null,
       contractSignedBy: c ? c.signed_by_name : null,
       contractSignedByTitle: c ? c.signed_by_title : null,
+      contractSignatureData: c ? (c.signature_data || c.signature_svg || null) : null,
+      contractSignatureType: c ? (c.signature_type || 'drawn') : 'drawn',
       contractAttachmentUrl: c ? c.attachment_url : null,
       contractAttachmentName: c ? c.attachment_name : null,
       contractSigningMethod: c ? c.signing_method : 'electronic',
@@ -166,6 +174,8 @@ export default async function LeadsCommandCenterPage() {
       contractSignedAt: c ? c.signed_at : null,
       contractSignedBy: c ? c.signed_by_name : null,
       contractSignedByTitle: c ? c.signed_by_title : null,
+      contractSignatureData: c ? (c.signature_data || c.signature_svg || null) : null,
+      contractSignatureType: c ? (c.signature_type || 'drawn') : 'drawn',
       contractAttachmentUrl: c ? c.attachment_url : null,
       contractAttachmentName: c ? c.attachment_name : null,
       contractSigningMethod: c ? c.signing_method : 'electronic',

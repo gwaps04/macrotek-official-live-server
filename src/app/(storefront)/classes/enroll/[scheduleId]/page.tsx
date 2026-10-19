@@ -128,19 +128,22 @@ export default async function ClassEnrollmentPage(props: {
       redirect(`/classes/enroll/${scheduleId}?error=full`);
     } else {
       
-      // WOZ FIX: Safe webhook dispatch using globally hoisted formatting functions
-      dispatchWebhook('enrollment.created', {
-        first_name: firstName,
-        last_name: lastName,
-        email: email,
-        phone: fullPhone,
-        address: address,
-        date: displayDate,
-        time: `${formatTime(session.start_time)} - ${formatTime(session.end_time)}`,
-        title: session.title,
-        instructor: session.instructor_name,
-        price: Number(session.price),
-      });
+      try {
+        await dispatchWebhook('enrollment.created', {
+          first_name: firstName,
+          last_name: lastName,
+          email: email,
+          phone: fullPhone,
+          address: address,
+          date: displayDate,
+          time: `${formatTime(session.start_time)} - ${formatTime(session.end_time)}`,
+          title: session.title,
+          instructor: session.instructor_name,
+          price: Number(session.price),
+        });
+      } catch (webhookErr) {
+        console.error('Failed to dispatch enrollment webhook:', webhookErr);
+      }
 
       redirect(`/classes/enroll/${scheduleId}?success=true`);
     }

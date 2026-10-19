@@ -123,17 +123,21 @@ export default async function AppointmentFormPage(props: {
         return `${hour}:${m} ${ampm}`;
       })();
 
-      dispatchWebhook('appointment.created', {
-        first_name: firstName,
-        last_name: lastName,
-        email: email,
-        phone: fullPhone,
-        address: address,
-        date: targetDate,
-        time: formattedTime,
-        notes: notes,
-        answers: extractedAnswers, 
-      });
+      try {
+        await dispatchWebhook('appointment.created', {
+          first_name: firstName,
+          last_name: lastName,
+          email: email,
+          phone: fullPhone,
+          address: address,
+          date: targetDate,
+          time: formattedTime,
+          notes: notes,
+          answers: extractedAnswers, 
+        });
+      } catch (webhookErr) {
+        console.error('Failed to dispatch appointment webhook:', webhookErr);
+      }
 
       redirect(`/book/${targetDate}?success=true&time=${time}`);
     }
@@ -258,7 +262,7 @@ export default async function AppointmentFormPage(props: {
                         <label 
                           key={time} 
                           title={isDisabled ? "Slot Unavailable" : "Available"}
-                          className={`relative flex items-center justify-center p-3 rounded-lg border text-sm font-bold transition-all ${isDisabled ? 'border-current/10 bg-current/5 opacity-40 cursor-not-allowed' : 'border-current/30 hover:border-current hover:bg-current/5 has-[:checked]:bg-(--booking-primary) has-[:checked]:text-(--booking-card-bg) has-[:checked]:border-(--booking-primary) shadow-sm cursor-pointer'}`}
+                          className={`relative flex items-center justify-center p-3 rounded-lg border text-sm font-bold transition-all ${isDisabled ? 'border-current/10 bg-current/5 opacity-40 cursor-not-allowed' : 'border-current/30 hover:border-current hover:bg-current/5 has-checked:bg-(--booking-primary) has-checked:text-(--booking-card-bg) has-checked:border-(--booking-primary) shadow-sm cursor-pointer'}`}
                         >
                           <input type="radio" name="time" value={time} required disabled={isDisabled} className="sr-only" />
                           {formatAmPm(time)}

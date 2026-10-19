@@ -35,13 +35,18 @@ export async function dispatchWebhook(
     const config = configResult[0];
     if (!config) return { success: false, reason: 'Site configuration missing' };
 
-    // Select the appropriate URL based on the event type
+    // Select the appropriate URL based on the event type (with smart fallback if using a single unified webhook)
     let targetUrl: string | null = null;
-    if (event === 'appointment.created') targetUrl = config.n8n_appointment_webhook_url;
-    else if (event === 'enrollment.created') targetUrl = config.n8n_enrollment_webhook_url;
-    else if (event === 'test.ping') targetUrl = config.n8n_appointment_webhook_url || config.n8n_enrollment_webhook_url;
+    if (event === 'appointment.created') {
+      targetUrl = config.n8n_appointment_webhook_url || config.n8n_enrollment_webhook_url;
+    } else if (event === 'enrollment.created') {
+      targetUrl = config.n8n_enrollment_webhook_url || config.n8n_appointment_webhook_url;
+    } else if (event === 'test.ping') {
+      targetUrl = config.n8n_appointment_webhook_url || config.n8n_enrollment_webhook_url;
+    }
 
     if (!targetUrl || targetUrl.trim() === '') {
+      console.warn(`[Webhook Dispatcher] No webhook URL configured in Admin for event: ${event}`);
       return { success: false, reason: 'Webhook URL not configured in Admin' };
     }
 

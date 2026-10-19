@@ -1,5 +1,4 @@
 import React from 'react';
-import Image from 'next/image';
 import { ContractData } from '@/app/contract/contract.actions';
 import * as Icons from 'lucide-react';
 
@@ -7,9 +6,10 @@ import * as Icons from 'lucide-react';
 
 interface ContractDocumentProps {
   contract: ContractData;
+  liveSignature?: string | null;
 }
 
-export default function ContractDocument({ contract }: ContractDocumentProps) {
+export default function ContractDocument({ contract, liveSignature }: ContractDocumentProps) {
   const rawDate = contract.signed_at || contract.created_at;
   const formattedDate = rawDate 
     ? new Date(rawDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
@@ -361,7 +361,7 @@ export default function ContractDocument({ contract }: ContractDocumentProps) {
           </div>
 
           {/* Client Signature Card */}
-          <div className="p-4 print:p-2.5 bg-zinc-50 rounded-xl border border-zinc-200 space-y-2 print:space-y-1">
+          <div className="p-4 print:p-2.5 bg-zinc-50 rounded-xl border border-zinc-200 space-y-2 print:space-y-1" id="client-signature-display">
             <span className="text-[10px] print:text-[9px] font-bold uppercase tracking-wider text-zinc-400 block">
               For Authorized Client:
             </span>
@@ -369,54 +369,78 @@ export default function ContractDocument({ contract }: ContractDocumentProps) {
             {/* Check if Signed */}
             {contract.status === 'Signed' ? (
               <div className="space-y-2 print:space-y-1">
-                <div className="h-14 print:h-11 flex items-center justify-center border-b border-emerald-500 bg-white rounded-lg p-1 overflow-hidden">
+                <div className="h-16 print:h-12 flex items-center justify-center border-b-2 border-emerald-600 bg-white/80 rounded-t-lg p-1 overflow-hidden relative">
                   {contract.signing_method === 'manual_hardcopy' ? (
                     <div className="flex items-center gap-2 text-indigo-700 font-bold text-xs print:text-[10px]">
                       <Icons.FileCheck2 size={16} />
                       <span>Hardcopy Executed (Uploaded on File)</span>
                     </div>
-                  ) : contract.signature_type === 'typed' ? (
-                    <span className="font-serif italic text-2xl print:text-lg text-emerald-900 font-bold">
-                      {contract.signed_by_name || contract.client_name}
-                    </span>
                   ) : contract.signature_data ? (
-                    <Image
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img
                       src={contract.signature_data}
-                      alt="Client e-Signature"
-                      width={300}
-                      height={60}
-                      className="max-h-12 print:max-h-9 w-auto object-contain"
-                      unoptimized
+                      alt="Client Digital Signature"
+                      className="max-h-14 print:max-h-10 w-auto object-contain mx-auto"
+                      crossOrigin="anonymous"
                     />
                   ) : (
-                    <span className="font-serif italic text-xl print:text-base text-emerald-900 font-semibold">
+                    <span className="font-serif italic text-2xl print:text-lg text-emerald-950 font-bold tracking-wide">
                       {contract.signed_by_name || contract.client_name}
                     </span>
                   )}
                 </div>
-                <div className="text-xs print:text-[10px] text-zinc-700 space-y-0.5 print:space-y-0">
-                  <p className="font-bold text-emerald-800 flex items-center gap-1">
-                    <Icons.CheckCircle2 size={12} />
-                    Digitally Executed: {contract.signed_by_name || contract.client_name}
+
+                {/* Signee Name & Legal Details Directly Underneath Signature */}
+                <div className="text-xs print:text-[10px] text-zinc-700 space-y-1 print:space-y-0.5 pt-0.5">
+                  <div className="flex items-center justify-between">
+                    <p className="font-bold text-zinc-950 text-sm print:text-xs">
+                      {contract.signed_by_name || contract.client_name}
+                    </p>
+                    <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800">
+                      <Icons.CheckCircle2 size={11} /> Digitally Signed
+                    </span>
+                  </div>
+                  <p className="text-zinc-600 font-medium">
+                    {contract.signed_by_title || 'Authorized Representative'}
                   </p>
-                  <p className="text-zinc-600">{contract.signed_by_title || 'Authorized Representative'}</p>
+                  {contract.company_name && (
+                    <p className="text-zinc-500">{contract.company_name}</p>
+                  )}
                   <p className="text-[10px] print:text-[8.5px] text-zinc-500 font-mono">
-                    Timestamp: {contract.signed_at ? new Date(contract.signed_at).toUTCString() : 'Recorded in Database'}
+                    Executed: {contract.signed_at ? new Date(contract.signed_at).toLocaleString() : formattedDate}
                   </p>
                 </div>
               </div>
             ) : (
-              <div className="h-14 print:h-11 flex items-end border-b-2 border-dashed border-zinc-300 pb-1.5 print:pb-1">
-                <span className="text-xs print:text-[9.5px] text-zinc-400 italic">
-                  Awaiting electronic signature verification below...
-                </span>
+              <div className="space-y-2 print:space-y-1">
+                <div className="h-16 print:h-12 flex items-center justify-center border-b-2 border-dashed border-zinc-300 pb-1.5 print:pb-1 bg-white/50 rounded-t-lg">
+                  {liveSignature ? (
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img
+                      src={liveSignature}
+                      alt="Pending Client Signature Preview"
+                      className="max-h-14 print:max-h-10 w-auto object-contain mx-auto"
+                    />
+                  ) : (
+                    <span className="text-xs print:text-[9.5px] text-zinc-400 italic">
+                      Awaiting electronic signature verification below...
+                    </span>
+                  )}
+                </div>
+
+                <div className="text-xs print:text-[10px] text-zinc-700 space-y-0.5 pt-0.5">
+                  <p className="font-bold text-zinc-900 text-sm print:text-xs">
+                    {contract.client_name}
+                  </p>
+                  <p className="text-zinc-500">
+                    {contract.company_name || 'Authorized Client'}
+                  </p>
+                  <p className="text-[10px] text-amber-600 font-medium">
+                    Status: Pending Digital Signature Execution
+                  </p>
+                </div>
               </div>
             )}
-
-            <div className="text-xs print:text-[10px] text-zinc-700">
-              <p className="font-semibold text-zinc-900">{contract.client_name}</p>
-              {contract.company_name && <p className="text-zinc-500">{contract.company_name}</p>}
-            </div>
           </div>
 
         </div>

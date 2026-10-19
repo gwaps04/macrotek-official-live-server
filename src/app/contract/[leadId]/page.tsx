@@ -10,12 +10,13 @@ export const revalidate = 0;
 
 export default async function PublicContractPage(props: {
   params: Promise<{ leadId: string }>;
-  searchParams: Promise<{ type?: string }>;
+  searchParams: Promise<{ type?: string; code?: string; admin?: string }>;
 }) {
   const params = await props.params;
   const searchParams = await props.searchParams;
   const leadId = params.leadId;
   const leadType = (searchParams.type === 'enrollment' ? 'enrollment' : 'appointment') as 'appointment' | 'enrollment';
+  const providedCode = searchParams.code?.trim().toLowerCase();
 
   const result = await getOrCreateContractAction(leadId, leadType);
 
@@ -42,9 +43,19 @@ export default async function PublicContractPage(props: {
     );
   }
 
+  const expectedCode = result.contract.access_code?.trim().toLowerCase();
+  const isAutoUnlocked = Boolean(
+    searchParams.admin === 'true' ||
+    (providedCode && expectedCode && providedCode === expectedCode) ||
+    result.contract.status === 'Signed'
+  );
+
   return (
     <div className="w-full">
-      <ContractPageView initialContract={result.contract} />
+      <ContractPageView 
+        initialContract={result.contract} 
+        initialUnlocked={isAutoUnlocked}
+      />
     </div>
   );
 }

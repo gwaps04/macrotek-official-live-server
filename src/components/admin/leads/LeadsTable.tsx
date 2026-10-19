@@ -177,7 +177,7 @@ export default function LeadsTable({ leads, onSelectLead }: LeadsTableProps) {
                       
                       {/* Direct Contract Link / PDF button */}
                       <Link
-                        href={`/contract/${lead.id}?type=${lead.type}`}
+                        href={`/contract/${lead.id}?type=${lead.type}&code=${encodeURIComponent(accessCode)}`}
                         target="_blank"
                         onClick={(e) => e.stopPropagation()}
                         className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-colors inline-flex items-center gap-1 border ${
@@ -185,10 +185,10 @@ export default function LeadsTable({ leads, onSelectLead }: LeadsTableProps) {
                             ? 'bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-600 shadow-2xs' 
                             : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-emerald-200/80'
                         }`}
-                        title={isContractSigned ? 'Download / View Signed Contract' : 'Open Contract & E-Sign'}
+                        title={isContractSigned ? 'View & Download Signed Contract' : 'Open Contract & E-Sign'}
                       >
-                        {isContractSigned ? <Icons.Download size={13} /> : <Icons.FileCheck size={13} />}
-                        <span>{isContractSigned ? 'PDF' : 'Contract'}</span>
+                        {isContractSigned ? <Icons.FileCheck2 size={13} /> : <Icons.FileText size={13} />}
+                        <span>{isContractSigned ? 'View Signed' : 'Contract'}</span>
                       </Link>
 
                       {/* Lead Dossier */}

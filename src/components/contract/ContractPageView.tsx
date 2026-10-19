@@ -5,14 +5,16 @@ import * as Icons from 'lucide-react';
 import { ContractData, signContractAction, verifyContractAccessCodeAction } from '@/app/contract/contract.actions';
 import ContractDocument from './ContractDocument';
 import SignaturePad from './SignaturePad';
+import { downloadElementAsPdf } from '../../lib/pdfExport';
 
 // FILE: src/components/contract/ContractPageView.tsx
 
 interface ContractPageViewProps {
   initialContract: ContractData;
+  initialUnlocked?: boolean;
 }
 
-export default function ContractPageView({ initialContract }: ContractPageViewProps) {
+export default function ContractPageView({ initialContract, initialUnlocked = false }: ContractPageViewProps) {
   const [contract, setContract] = useState<ContractData>(initialContract);
 
   // Synchronize contract state immediately when initialContract updates (e.g. after refresh)
@@ -21,7 +23,7 @@ export default function ContractPageView({ initialContract }: ContractPageViewPr
   }, [initialContract]);
   
   // Access Code Gate State
-  const [isUnlocked, setIsUnlocked] = useState(false);
+  const [isUnlocked, setIsUnlocked] = useState(initialUnlocked);
   const [accessCodeInput, setAccessCodeInput] = useState('');
   const [accessCodeError, setAccessCodeError] = useState<string | null>(null);
   const [isVerifyingCode, setIsVerifyingCode] = useState(false);
@@ -39,6 +41,7 @@ export default function ContractPageView({ initialContract }: ContractPageViewPr
   // PDF Download & Generation State
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [pdfDownloadFeedback, setPdfDownloadFeedback] = useState(false);
+  const [pdfError, setPdfError] = useState<string | null>(null);
 
   const isSigned = contract.status === 'Signed';
 
@@ -100,93 +103,35 @@ export default function ContractPageView({ initialContract }: ContractPageViewPr
     }
   };
 
-  // Helper to dynamically load html2pdf from node_modules or CDN
-  const getPdfGenerator = async (): Promise<any> => {
-    if (typeof window === 'undefined') return null;
-
-    // 1. Check window global
-    if ((window as any).html2pdf) {
-      return (window as any).html2pdf;
-    }
-
-    // 2. Try dynamic import from node_modules if present
-    try {
-      const html2pdfModule = await import('html2pdf.js');
-      const gen = html2pdfModule.default || html2pdfModule;
-      if (gen) return gen;
-    } catch {
-      // If not present in local node_modules, fall through to CDN script injection
-    }
-
-    // 3. Dynamic script injection from CDN
-    return new Promise((resolve, reject) => {
-      const existing = document.getElementById('html2pdf-script') as HTMLScriptElement;
-      if (existing) {
-        if ((window as any).html2pdf) {
-          resolve((window as any).html2pdf);
-        } else {
-          existing.addEventListener('load', () => resolve((window as any).html2pdf));
-          existing.addEventListener('error', () => reject(new Error('Failed to load html2pdf')));
-        }
-        return;
-      }
-
-      const script = document.createElement('script');
-      script.id = 'html2pdf-script';
-      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
-      script.async = true;
-      script.onload = () => {
-        if ((window as any).html2pdf) {
-          resolve((window as any).html2pdf);
-        } else {
-          reject(new Error('html2pdf failed to initialize on window'));
-        }
-      };
-      script.onerror = () => reject(new Error('Failed to load html2pdf script'));
-      document.head.appendChild(script);
-    });
-  };
-
-  // Direct Client-Side PDF Generation & Instant File Download
+  // Direct Client-Side PDF Generation & Instant True File Download
   const handleDownloadPdf = async () => {
     if (typeof window === 'undefined') return;
-    const element = document.getElementById('contract-document');
-    if (!element) {
-      handleNativePrint();
-      return;
-    }
-
+    setPdfError(null);
     setIsGeneratingPdf(true);
-    try {
-      const html2pdf = await getPdfGenerator();
-      if (!html2pdf) {
-        throw new Error('PDF generator unavailable');
-      }
 
+    try {
       const safeClient = (contract.client_name || 'Client').trim().replace(/[^a-zA-Z0-9_-]/g, '_');
       const safeTitle = (contract.contract_title || 'Master_Service_Agreement').trim().replace(/[^a-zA-Z0-9_-]/g, '_');
       const filename = `${safeTitle}_${safeClient}.pdf`;
 
-      const opt = {
-        margin: [10, 10, 10, 10] as [number, number, number, number],
+      const result = await downloadElementAsPdf({
+        elementId: 'contract-document',
         filename: filename,
-        image: { type: 'jpeg' as const, quality: 0.98 },
-        html2canvas: { 
-          scale: 2, 
-          useCORS: true, 
-          letterRendering: true,
-          logging: false 
-        },
-        jsPDF: { unit: 'mm' as const, format: 'a4' as const, orientation: 'portrait' as const },
-        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
-      };
+        scale: 2,
+        quality: 0.98
+      });
 
-      await html2pdf().set(opt).from(element).save();
-      setPdfDownloadFeedback(true);
-      setTimeout(() => setPdfDownloadFeedback(false), 3000);
-    } catch (err) {
-      console.warn('Direct PDF download fallback to window.print():', err);
-      handleNativePrint();
+      if (result.success) {
+        setPdfDownloadFeedback(true);
+        setTimeout(() => setPdfDownloadFeedback(false), 3500);
+      } else {
+        setPdfError(result.error || 'Failed to render PDF file. Please try again.');
+        setTimeout(() => setPdfError(null), 6000);
+      }
+    } catch (err: any) {
+      console.error('Direct PDF download error:', err);
+      setPdfError('Failed to generate PDF. You can also use the Print button to save as PDF.');
+      setTimeout(() => setPdfError(null), 6000);
     } finally {
       setIsGeneratingPdf(false);
     }
@@ -235,12 +180,13 @@ export default function ContractPageView({ initialContract }: ContractPageViewPr
 
     startTransition(async () => {
       const res = await signContractAction({
-        leadId: contract.lead_id,
+        leadId: contract.lead_id || contract.id,
+        contractId: contract.id,
         signatureData,
         signatureType,
         signedByName: signerName.trim(),
         signedByTitle: signerTitle.trim(),
-        accessCode: contract.access_code
+        accessCode: contract.access_code || accessCodeInput || undefined
       });
 
       if (res.success) {
@@ -250,10 +196,18 @@ export default function ContractPageView({ initialContract }: ContractPageViewPr
           signing_method: 'electronic',
           signature_data: signatureData,
           signature_type: signatureType,
-          signed_at: new Date().toISOString(),
-          signed_by_name: signerName.trim(),
-          signed_by_title: signerTitle.trim()
+          signed_at: res.signedAt || new Date().toISOString(),
+          signed_by_name: res.signedByName || signerName.trim(),
+          signed_by_title: res.signedByTitle || signerTitle.trim()
         });
+
+        // Smoothly scroll to the signature display card so the user sees the signature on top of the name
+        setTimeout(() => {
+          const sigCard = document.getElementById('client-signature-display');
+          if (sigCard) {
+            sigCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }, 150);
       } else {
         setErrorMsg(res.error || 'Failed to submit electronic signature. Please try again.');
       }
@@ -446,6 +400,22 @@ export default function ContractPageView({ initialContract }: ContractPageViewPr
       {/* Main Container */}
       <main className="max-w-4xl mx-auto px-4 sm:px-6 pt-6 sm:pt-10 print:p-0 print:m-0 print:max-w-none">
         
+        {/* PDF Generation Error Banner if any */}
+        {pdfError && (
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-800 rounded-2xl text-xs flex items-center justify-between gap-3 print:hidden shadow-xs">
+            <div className="flex items-center gap-2">
+              <Icons.AlertCircle size={16} className="text-red-600 shrink-0" />
+              <span>{pdfError}</span>
+            </div>
+            <button
+              onClick={() => setPdfError(null)}
+              className="text-xs font-bold text-red-700 hover:text-red-900 px-2.5 py-1 rounded-lg bg-red-100 cursor-pointer"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
+
         {/* Success Banner if Signed */}
         {isSigned && (
           <div className="mb-6 p-4 sm:p-5 bg-emerald-50 border border-emerald-200 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-emerald-900 print:hidden shadow-xs">
@@ -497,7 +467,7 @@ export default function ContractPageView({ initialContract }: ContractPageViewPr
         )}
 
         {/* The Read-Only Formal Legal Contract Document */}
-        <ContractDocument contract={contract} />
+        <ContractDocument contract={contract} liveSignature={signatureData} />
 
         {/* E-Signature Execution Panel (Only shown if unsigned) */}
         {!isSigned && (
@@ -553,7 +523,9 @@ export default function ContractPageView({ initialContract }: ContractPageViewPr
                   onSaveSignature={(data, type) => {
                     setSignatureData(data);
                     setSignatureType(type);
+                    setErrorMsg(null);
                   }}
+                  defaultName={signerName || contract.client_name}
                   disabled={isPending}
                 />
               </div>
