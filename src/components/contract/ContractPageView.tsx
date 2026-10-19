@@ -38,6 +38,9 @@ export default function ContractPageView({ initialContract, initialUnlocked = fa
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
+  // Spacing & Page-Fit Mode ('auto' | 'compact' | 'spacious')
+  const [spacingMode, setSpacingMode] = useState<'auto' | 'compact' | 'spacious'>('auto');
+
   // PDF Download & Generation State
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [pdfDownloadFeedback, setPdfDownloadFeedback] = useState(false);
@@ -49,19 +52,34 @@ export default function ContractPageView({ initialContract, initialUnlocked = fa
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const storageKey = `contract_unlocked_${contract.id}`;
-      const savedCode = sessionStorage.getItem(storageKey);
+      const leadStorageKey = contract.lead_id ? `contract_unlocked_${contract.lead_id}` : null;
+      const savedCode = sessionStorage.getItem(storageKey) || (leadStorageKey ? sessionStorage.getItem(leadStorageKey) : null);
       
       const searchParams = new URLSearchParams(window.location.search);
       const urlCode = searchParams.get('code');
+      const expectedCode = (contract.access_code || '').trim().toLowerCase();
 
-      if (urlCode && contract.access_code && urlCode.trim().toLowerCase() === contract.access_code.trim().toLowerCase()) {
+      if (urlCode && expectedCode && urlCode.trim().toLowerCase() === expectedCode) {
         setIsUnlocked(true);
         sessionStorage.setItem(storageKey, urlCode.trim());
-      } else if (savedCode && contract.access_code && savedCode.trim().toLowerCase() === contract.access_code.trim().toLowerCase()) {
+        if (leadStorageKey) sessionStorage.setItem(leadStorageKey, urlCode.trim());
+      } else if (savedCode && expectedCode && savedCode.trim().toLowerCase() === expectedCode) {
         setIsUnlocked(true);
       }
     }
-  }, [contract.id, contract.access_code]);
+  }, [contract.id, contract.lead_id, contract.access_code]);
+
+  const handleLockDocument = () => {
+    if (typeof window !== 'undefined') {
+      sessionStorage.removeItem(`contract_unlocked_${contract.id}`);
+      if (contract.lead_id) {
+        sessionStorage.removeItem(`contract_unlocked_${contract.lead_id}`);
+      }
+    }
+    setAccessCodeInput('');
+    setAccessCodeError(null);
+    setIsUnlocked(false);
+  };
 
   const handleUnlockWithCode = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -82,19 +100,26 @@ export default function ContractPageView({ initialContract, initialUnlocked = fa
         setIsUnlocked(true);
         if (typeof window !== 'undefined') {
           sessionStorage.setItem(`contract_unlocked_${contract.id}`, entered);
+          if (contract.lead_id) {
+            sessionStorage.setItem(`contract_unlocked_${contract.lead_id}`, entered);
+          }
         }
         return;
       }
 
-      // 2. Server-side validation (in case admin regenerated PIN)
-      const res = await verifyContractAccessCodeAction(contract.lead_id || contract.id, entered);
+      // 2. Server-side validation (checks Neon DB & authoritative record)
+      const targetId = contract.lead_id || contract.id;
+      const res = await verifyContractAccessCodeAction(targetId, entered);
       if (res.valid) {
         setIsUnlocked(true);
         if (typeof window !== 'undefined') {
           sessionStorage.setItem(`contract_unlocked_${contract.id}`, entered);
+          if (contract.lead_id) {
+            sessionStorage.setItem(`contract_unlocked_${contract.lead_id}`, entered);
+          }
         }
       } else {
-        setAccessCodeError('Invalid Access Code. Please check the code provided by Macrotek.');
+        setAccessCodeError('Invalid Access Code. Please enter the correct PIN provided by Macrotek.');
       }
     } catch {
       setAccessCodeError('Failed to verify access code. Please try again.');
@@ -118,7 +143,8 @@ export default function ContractPageView({ initialContract, initialUnlocked = fa
         elementId: 'contract-document',
         filename: filename,
         scale: 2,
-        quality: 0.98
+        quality: 0.98,
+        spacingMode: spacingMode
       });
 
       if (result.success) {
@@ -240,7 +266,15 @@ export default function ContractPageView({ initialContract, initialUnlocked = fa
             </h1>
 
             <p className="text-xs text-zinc-400 mt-2 leading-relaxed">
-              This Master Service Agreement for <strong className="text-zinc-200">{contract.client_name}</strong> is access-code protected. Enter your 6-digit access code to unlock and e-sign.
+              {isSigned ? (
+                <React.Fragment>
+                  This confidential agreement for <strong className="text-zinc-200">{contract.client_name}</strong> has been electronically executed. Enter your 6-digit access PIN to securely unlock and view the signed document.
+                </React.Fragment>
+              ) : (
+                <React.Fragment>
+                  This Master Service Agreement for <strong className="text-zinc-200">{contract.client_name}</strong> is access-code protected. Enter your 6-digit access PIN to unlock and e-sign.
+                </React.Fragment>
+              )}
             </p>
 
             <form onSubmit={handleUnlockWithCode} className="w-full mt-6 space-y-4">
@@ -343,7 +377,48 @@ export default function ContractPageView({ initialContract, initialUnlocked = fa
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Auto Spacing & Layout Optimization Selector */}
+            <div className="flex items-center rounded-xl bg-zinc-100 p-1 border border-zinc-200">
+              <span className="text-[10px] font-bold text-zinc-400 uppercase px-1.5 hidden md:inline">Layout:</span>
+              <button
+                type="button"
+                onClick={() => setSpacingMode('auto')}
+                title="Intelligently auto-adjusts spacing with paragraph-safe page breaks"
+                className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
+                  spacingMode === 'auto'
+                    ? 'bg-white text-zinc-950 shadow-2xs font-bold'
+                    : 'text-zinc-600 hover:text-zinc-900'
+                }`}
+              >
+                Auto Fit
+              </button>
+              <button
+                type="button"
+                onClick={() => setSpacingMode('compact')}
+                title="Compact layout to fit completely onto 1 page"
+                className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
+                  spacingMode === 'compact'
+                    ? 'bg-white text-zinc-950 shadow-2xs font-bold'
+                    : 'text-zinc-600 hover:text-zinc-900'
+                }`}
+              >
+                1-Page
+              </button>
+              <button
+                type="button"
+                onClick={() => setSpacingMode('spacious')}
+                title="Spacious layout across 2 pages"
+                className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
+                  spacingMode === 'spacious'
+                    ? 'bg-white text-zinc-950 shadow-2xs font-bold'
+                    : 'text-zinc-600 hover:text-zinc-900'
+                }`}
+              >
+                2-Page
+              </button>
+            </div>
+
             <button
               onClick={handleCopyLink}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-zinc-200 hover:bg-zinc-50 text-xs font-semibold text-zinc-700 transition-colors shadow-2xs cursor-pointer"
@@ -391,6 +466,15 @@ export default function ContractPageView({ initialContract, initialUnlocked = fa
                   <span>Download PDF</span>
                 </React.Fragment>
               )}
+            </button>
+
+            <button
+              onClick={handleLockDocument}
+              title="Lock document to protect confidentiality"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-zinc-200 hover:bg-zinc-50 text-xs font-semibold text-zinc-700 transition-colors shadow-2xs cursor-pointer"
+            >
+              <Icons.Lock size={13} className="text-zinc-500" />
+              <span className="hidden sm:inline">Lock</span>
             </button>
           </div>
 
@@ -467,7 +551,7 @@ export default function ContractPageView({ initialContract, initialUnlocked = fa
         )}
 
         {/* The Read-Only Formal Legal Contract Document */}
-        <ContractDocument contract={contract} liveSignature={signatureData} />
+        <ContractDocument contract={contract} liveSignature={signatureData} spacingMode={spacingMode} />
 
         {/* E-Signature Execution Panel (Only shown if unsigned) */}
         {!isSigned && (

@@ -246,37 +246,43 @@ export async function verifyContractAccessCodeAction(
       return { success: false, valid: false, error: 'Access code cannot be empty' };
     }
 
+    // 1. Check existing contracts matching lead_id or contract id
     const rows = await sql`
-      SELECT * FROM contracts WHERE lead_id = ${leadId} OR id::text = ${leadId} LIMIT 1
+      SELECT * FROM contracts 
+      WHERE lead_id = ${leadId} OR id::text = ${leadId} 
+      ORDER BY (CASE WHEN status = 'Signed' THEN 0 ELSE 1 END), created_at DESC 
+      LIMIT 5
     `;
 
-    if (rows.length > 0) {
-      const contract = rows[0];
+    let hasContractWithCode = false;
+    for (const contract of rows) {
       const contractCode = String(contract.access_code || '').trim().replace(/[-\s]/g, '');
-
-      if (!contractCode) {
-        return { success: true, valid: true };
-      }
-
-      if (contractCode.toLowerCase() === cleanCode.toLowerCase()) {
-        return { success: true, valid: true };
+      if (contractCode) {
+        hasContractWithCode = true;
+        if (contractCode.toLowerCase() === cleanCode.toLowerCase()) {
+          return { success: true, valid: true };
+        }
       }
     }
 
-    // Check deterministic code for this lead as valid match
-    const deterministicCode = getDeterministicAccessCode(leadId);
-    if (deterministicCode.toLowerCase() === cleanCode.toLowerCase()) {
-      return { success: true, valid: true };
+    // 2. Fallback to deterministic code only if no contract with an access code exists in DB yet
+    if (!hasContractWithCode) {
+      const deterministicCode = getDeterministicAccessCode(leadId);
+      if (deterministicCode.toLowerCase() === cleanCode.toLowerCase()) {
+        return { success: true, valid: true };
+      }
+
+      if (rows.length > 0 && rows[0].lead_id && rows[0].lead_id !== leadId) {
+        const secondaryDeterministic = getDeterministicAccessCode(String(rows[0].lead_id));
+        if (secondaryDeterministic.toLowerCase() === cleanCode.toLowerCase()) {
+          return { success: true, valid: true };
+        }
+      }
     }
 
     return { success: true, valid: false };
   } catch (err: any) {
     console.error('[Contract Action Error - verifyCode]:', err);
-    // Resilience fallback: match against deterministic code
-    const deterministicCode = getDeterministicAccessCode(leadId);
-    if (enteredCode.trim().replace(/[-\s]/g, '').toLowerCase() === deterministicCode.toLowerCase()) {
-      return { success: true, valid: true };
-    }
     return { success: false, valid: false, error: err.message || 'Verification failed' };
   }
 }
@@ -544,10 +550,14 @@ export async function regenerateAccessCodeAction(contractId: string, leadId?: st
       WHERE lead_id = ${effectiveLeadId} OR id::text = ${contractId}
     `;
 
-    if (leadId) {
-      revalidatePath(`/contract/${leadId}`);
+    try {
+      if (leadId) {
+        revalidatePath(`/contract/${leadId}`);
+      }
+      revalidatePath('/dashboard/leads');
+    } catch {
+      // Revalidation inside server action context can safely ignore out-of-context errors
     }
-    revalidatePath('/dashboard/leads');
     return { success: true, newCode };
   } catch (err: any) {
     console.error('[Contract Action Error - regenerateCode]:', err);

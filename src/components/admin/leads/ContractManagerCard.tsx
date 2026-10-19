@@ -65,6 +65,7 @@ export default function ContractManagerCard({ lead, onRefresh, onUpdateLead }: C
   // UI Feedback & Active Tab
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [copyCodeFeedback, setCopyCodeFeedback] = useState(false);
+  const [copyLinkFeedback, setCopyLinkFeedback] = useState(false);
   const [copyInviteFeedback, setCopyInviteFeedback] = useState(false);
   const [activeTab, setActiveTab] = useState<'terms' | 'contents' | 'status'>('terms');
 
@@ -117,11 +118,15 @@ export default function ContractManagerCard({ lead, onRefresh, onUpdateLead }: C
     ? Math.max(0, numericCost - (numericDownpaymentPct !== null ? downpaymentAmount : 0)) 
     : 0;
 
-  // Contract URL (includes authorized access code for instant admin view)
-  const contractPath = `/contract/${lead.id}?type=${lead.type}${accessCode ? `&code=${encodeURIComponent(accessCode)}` : ''}`;
-  const contractUrl = typeof window !== 'undefined'
-    ? `${window.location.origin}${contractPath}`
-    : contractPath;
+  // Confidential Client URL (Requires 6-Digit PIN to unlock)
+  const clientContractPath = `/contract/${lead.id}?type=${lead.type}`;
+  const clientContractUrl = typeof window !== 'undefined'
+    ? `${window.location.origin}${clientContractPath}`
+    : clientContractPath;
+
+  // Admin Direct View URL (Bypasses PIN prompt for authorized administrator)
+  const adminContractPath = `/contract/${lead.id}?type=${lead.type}&admin=true`;
+  const contractPath = adminContractPath;
 
   const handleCopyCode = () => {
     navigator.clipboard.writeText(accessCode);
@@ -129,8 +134,14 @@ export default function ContractManagerCard({ lead, onRefresh, onUpdateLead }: C
     setTimeout(() => setCopyCodeFeedback(false), 2000);
   };
 
+  const handleCopyClientLink = () => {
+    navigator.clipboard.writeText(clientContractUrl);
+    setCopyLinkFeedback(true);
+    setTimeout(() => setCopyLinkFeedback(false), 2000);
+  };
+
   const handleCopyInviteMessage = () => {
-    const msg = `Hi ${lead.firstName}, please review and electronically sign our ${contractTitle} with Macrotek Digital Solutions here:\n\n${contractUrl}\n\nYour Access Code: ${accessCode}`;
+    const msg = `Hi ${lead.firstName}, please review and electronically sign our ${contractTitle} with Macrotek Digital Solutions here:\n\n${clientContractUrl}\n\nConfidential Access PIN: ${accessCode}\n(Please enter this 6-digit PIN to securely unlock and review your agreement)`;
     navigator.clipboard.writeText(msg);
     setCopyInviteFeedback(true);
     setTimeout(() => setCopyInviteFeedback(false), 2500);
@@ -354,26 +365,28 @@ export default function ContractManagerCard({ lead, onRefresh, onUpdateLead }: C
 
         <div className="flex items-center gap-2">
           <a
-            href={contractPath}
+            href={adminContractPath}
             target="_blank"
             rel="noopener noreferrer"
-            className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-colors flex items-center gap-1.5 shadow-xs ${
-              isSigned
-                ? 'bg-emerald-500 hover:bg-emerald-400 text-zinc-950'
-                : 'bg-zinc-800 hover:bg-zinc-700 text-white'
-            }`}
+            className="px-3 py-1.5 text-xs font-bold rounded-xl transition-colors flex items-center gap-1.5 shadow-xs bg-zinc-800 hover:bg-zinc-700 text-white cursor-pointer"
+            title="Direct admin view (authenticated bypass)"
           >
-            {isSigned ? (
-              <React.Fragment>
-                <Icons.FileCheck2 size={13} className="text-zinc-950" />
-                <span>View &amp; Download Signed PDF</span>
-              </React.Fragment>
-            ) : (
-              <React.Fragment>
-                <Icons.ExternalLink size={13} />
-                <span>Preview Agreement</span>
-              </React.Fragment>
-            )}
+            <Icons.ExternalLink size={13} />
+            <span>Admin View</span>
+          </a>
+          <a
+            href={clientContractPath}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer ${
+              isSigned
+                ? 'bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-bold'
+                : 'bg-emerald-600 hover:bg-emerald-500 text-white'
+            }`}
+            title="Test client view with PIN gate"
+          >
+            <Icons.ShieldCheck size={13} />
+            <span>Test Client PIN Gate</span>
           </a>
         </div>
       </div>
@@ -385,15 +398,15 @@ export default function ContractManagerCard({ lead, onRefresh, onUpdateLead }: C
             <Icons.KeyRound size={16} />
           </div>
           <div>
-            <span className="text-[10px] uppercase font-bold text-zinc-500 block">Client Access Code</span>
-            <div className="flex items-center gap-2">
+            <span className="text-[10px] uppercase font-bold text-zinc-500 block">Client Access Code (Confidential PIN)</span>
+            <div className="flex items-center gap-2 flex-wrap">
               <span className="text-base font-mono font-black text-emerald-400 tracking-wider">
                 {accessCode}
               </span>
               <button
                 type="button"
                 onClick={handleCopyCode}
-                className="px-2 py-0.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-[10px] font-semibold rounded-md transition-colors flex items-center gap-1"
+                className="px-2 py-0.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-[10px] font-semibold rounded-md transition-colors flex items-center gap-1 cursor-pointer"
               >
                 {copyCodeFeedback ? (
                   <React.Fragment>
@@ -404,6 +417,24 @@ export default function ContractManagerCard({ lead, onRefresh, onUpdateLead }: C
                   <React.Fragment>
                     <Icons.Copy size={11} />
                     <span>Copy PIN</span>
+                  </React.Fragment>
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={handleCopyClientLink}
+                className="px-2 py-0.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-[10px] font-semibold rounded-md transition-colors flex items-center gap-1 cursor-pointer"
+                title="Copy client URL"
+              >
+                {copyLinkFeedback ? (
+                  <React.Fragment>
+                    <Icons.Check size={11} className="text-emerald-400" />
+                    <span className="text-emerald-400">Link Copied!</span>
+                  </React.Fragment>
+                ) : (
+                  <React.Fragment>
+                    <Icons.Link size={11} />
+                    <span>Copy Client Link</span>
                   </React.Fragment>
                 )}
               </button>
@@ -420,7 +451,7 @@ export default function ContractManagerCard({ lead, onRefresh, onUpdateLead }: C
             title="Generate a new 6-digit access code"
           >
             <Icons.RefreshCw size={12} className={isPending ? 'animate-spin' : ''} />
-            <span>Regenerate Code</span>
+            <span>Regenerate PIN</span>
           </button>
         </div>
       </div>
@@ -430,7 +461,7 @@ export default function ContractManagerCard({ lead, onRefresh, onUpdateLead }: C
         <div className="flex items-center justify-between">
           <span className="text-[11px] font-bold text-zinc-400 flex items-center gap-1.5">
             <Icons.Send size={12} className="text-emerald-500" />
-            Client Invitation &amp; Access Code Message:
+            Client Invitation &amp; Confidential PIN Message:
           </span>
           <button
             type="button"
@@ -451,7 +482,7 @@ export default function ContractManagerCard({ lead, onRefresh, onUpdateLead }: C
           </button>
         </div>
         <p className="text-xs text-zinc-300 font-mono bg-zinc-900 p-2.5 rounded-xl border border-zinc-800 select-all leading-relaxed break-all">
-          Hi {lead.firstName}, please review and electronically sign our {contractTitle} with Macrotek Digital Solutions here: {contractUrl} | Access Code: {accessCode}
+          Hi {lead.firstName}, please review and electronically sign our {contractTitle} with Macrotek Digital Solutions here: {clientContractUrl} | Confidential PIN: {accessCode}
         </p>
       </div>
 

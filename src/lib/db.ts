@@ -1084,7 +1084,7 @@ function processMockQuery(strings: TemplateStringsArray | string | string[], val
   }
 
   // 18. Contracts & Service Agreements
-  if (/FROM contracts/i.test(normalized)) {
+  if (/\bcontracts\b/i.test(normalized)) {
     if (/^INSERT INTO contracts/i.test(normalized)) {
       const generatedCode = String(Math.floor(100000 + Math.random() * 900000));
       const item: Record<string, any> = {
@@ -1136,6 +1136,7 @@ function processMockQuery(strings: TemplateStringsArray | string | string[], val
           else if (col === 'contract_title') item.contract_title = String(val || 'Master Service Agreement');
           else if (col === 'custom_terms') item.custom_terms = String(val || '');
           else if (col === 'esign_enabled') item.esign_enabled = Boolean(val);
+          else if (col === 'access_code' && val) item.access_code = String(val).trim();
           else (item as any)[col] = val;
         });
       }
@@ -1144,7 +1145,7 @@ function processMockQuery(strings: TemplateStringsArray | string | string[], val
       return [item];
     }
 
-    if (/^UPDATE contracts SET/i.test(normalized)) {
+    if (/^UPDATE\s+contracts/i.test(normalized)) {
       // Find matching contract across all parameters after the WHERE clause
       const whereIdx = fullSql.toUpperCase().indexOf('WHERE');
       const whereSql = whereIdx !== -1 ? fullSql.slice(whereIdx) : '';
@@ -1278,8 +1279,17 @@ function processMockQuery(strings: TemplateStringsArray | string | string[], val
     }
 
     if (/WHERE lead_id =/i.test(normalized)) {
-      const leadId = values[0];
-      const list = mockStore.contracts.filter(c => c.lead_id === leadId || c.id === leadId);
+      const whereIdx = fullSql.toUpperCase().indexOf('WHERE');
+      const whereSql = whereIdx !== -1 ? fullSql.slice(whereIdx) : '';
+      const whereParamIndices = Array.from(whereSql.matchAll(/__VAL_(\d+)__/g)).map(m => parseInt(m[1], 10));
+      const targetIds = whereParamIndices.map(idx => String(values[idx] || '').trim().toLowerCase());
+      if (values.length > 0) {
+        targetIds.push(String(values[0] || '').trim().toLowerCase());
+      }
+      const list = mockStore.contracts.filter(c => 
+        targetIds.includes(String(c.lead_id || '').trim().toLowerCase()) || 
+        targetIds.includes(String(c.id || '').trim().toLowerCase())
+      );
       list.forEach(c => {
         if (!c.access_code) {
           let h = 0x811c9dc5;
@@ -1295,17 +1305,27 @@ function processMockQuery(strings: TemplateStringsArray | string | string[], val
         }
         if (c.esign_enabled === undefined) c.esign_enabled = true;
       });
+      list.sort((a, b) => {
+        if (a.status === 'Signed' && b.status !== 'Signed') return -1;
+        if (b.status === 'Signed' && a.status !== 'Signed') return 1;
+        return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
+      });
       return list;
     }
 
     if (/WHERE access_code =/i.test(normalized)) {
-      const code = values[0];
-      return mockStore.contracts.filter(c => String(c.access_code).trim().toLowerCase() === String(code).trim().toLowerCase());
+      const code = String(values[0] || '').trim().replace(/[-\s]/g, '').toLowerCase();
+      return mockStore.contracts.filter(c => 
+        String(c.access_code || '').trim().replace(/[-\s]/g, '').toLowerCase() === code
+      );
     }
 
     if (/WHERE id =/i.test(normalized)) {
-      const id = values[0];
-      return mockStore.contracts.filter(c => c.id === id);
+      const id = String(values[0] || '').trim().toLowerCase();
+      return mockStore.contracts.filter(c => 
+        String(c.id || '').trim().toLowerCase() === id || 
+        String(c.lead_id || '').trim().toLowerCase() === id
+      );
     }
 
     return mockStore.contracts.slice().sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());

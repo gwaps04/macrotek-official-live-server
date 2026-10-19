@@ -46,8 +46,7 @@ export default async function PublicContractPage(props: {
   const expectedCode = result.contract.access_code?.trim().toLowerCase();
   const isAutoUnlocked = Boolean(
     searchParams.admin === 'true' ||
-    (providedCode && expectedCode && providedCode === expectedCode) ||
-    result.contract.status === 'Signed'
+    (providedCode && expectedCode && providedCode === expectedCode)
   );
 
   return (

@@ -62,21 +62,21 @@ export default function LeadDetailModal({ lead, onClose, onRefresh, onUpdateLead
   };
 
   const accessCode = lead.contractAccessCode || '';
-  const contractPath = `/contract/${lead.id}?type=${lead.type}${accessCode ? `&code=${encodeURIComponent(accessCode)}` : ''}`;
-  const contractUrl = typeof window !== 'undefined' 
-    ? `${window.location.origin}${contractPath}` 
-    : contractPath;
-
-  const codeSnippet = accessCode ? ` | Access Code: ${accessCode}` : '';
+  const clientContractPath = `/contract/${lead.id}?type=${lead.type}`;
+  const contractPath = clientContractPath;
+  const clientContractUrl = typeof window !== 'undefined' 
+    ? `${window.location.origin}${clientContractPath}` 
+    : clientContractPath;
 
   const handleCopyContractLink = () => {
-    navigator.clipboard.writeText(`${contractUrl}${codeSnippet}`);
-    setCopyFeedback('Copied contract link & access code to clipboard!');
+    navigator.clipboard.writeText(clientContractUrl);
+    setCopyFeedback('Copied client contract link to clipboard!');
     setTimeout(() => setCopyFeedback(null), 3000);
   };
 
   const handleCopyInviteMessage = () => {
-    const msg = `Hi ${lead.firstName}, please review and electronically sign our Master Service Agreement with Macrotek Digital Solutions here: ${contractUrl}${codeSnippet}`;
+    const codeSnippet = accessCode ? `\n\nConfidential Access PIN: ${accessCode}\n(Please enter this 6-digit PIN to securely unlock and review your agreement)` : '';
+    const msg = `Hi ${lead.firstName}, please review and electronically sign our Master Service Agreement with Macrotek Digital Solutions here:\n\n${clientContractUrl}${codeSnippet}`;
     navigator.clipboard.writeText(msg);
     setCopyFeedback('Copied client invite message with access code to clipboard!');
     setTimeout(() => setCopyFeedback(null), 3000);

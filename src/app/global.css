@@ -42,9 +42,20 @@ body {
   .contract-section,
   .contract-signature-card,
   .contract-parties-card,
-  .contract-financial-card {
+  .contract-financial-card,
+  .contract-paragraph {
     break-inside: avoid !important;
     page-break-inside: avoid !important;
+  }
+
+  h1, h2, h3, .contract-section-heading {
+    break-after: avoid !important;
+    page-break-after: avoid !important;
+  }
+
+  p {
+    orphans: 3;
+    widows: 3;
   }
 
   * {

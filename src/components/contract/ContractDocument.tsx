@@ -4,12 +4,21 @@ import * as Icons from 'lucide-react';
 
 // FILE: src/components/contract/ContractDocument.tsx
 
+export type ContractSpacingMode = 'auto' | 'compact' | 'spacious';
+
 interface ContractDocumentProps {
   contract: ContractData;
   liveSignature?: string | null;
+  spacingMode?: ContractSpacingMode;
 }
 
-export default function ContractDocument({ contract, liveSignature }: ContractDocumentProps) {
+export default function ContractDocument({ 
+  contract, 
+  liveSignature,
+  spacingMode = 'auto' 
+}: ContractDocumentProps) {
+  const isCompact = spacingMode === 'compact';
+  const isSpacious = spacingMode === 'spacious';
   const rawDate = contract.signed_at || contract.created_at;
   const formattedDate = rawDate 
     ? new Date(rawDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
@@ -52,7 +61,14 @@ export default function ContractDocument({ contract, liveSignature }: ContractDo
   return (
     <div 
       id="contract-document"
-      className="bg-white text-zinc-900 shadow-2xl border border-zinc-200/90 rounded-2xl md:rounded-3xl p-6 sm:p-10 md:p-12 max-w-4xl mx-auto print:shadow-none print:border-none print:p-0 print:m-0 print:max-w-none font-serif text-[13px] leading-relaxed print:text-[11px] print:leading-snug print:bg-white"
+      data-spacing-mode={spacingMode}
+      className={`bg-white text-zinc-900 shadow-2xl border border-zinc-200/90 rounded-2xl md:rounded-3xl max-w-4xl mx-auto font-serif transition-all duration-200 print:shadow-none print:border-none print:p-0 print:m-0 print:max-w-none print:bg-white ${
+        isCompact 
+          ? 'p-5 sm:p-7 md:p-8 text-[11.5px] leading-snug print:text-[10.5px] print:leading-tight' 
+          : isSpacious
+            ? 'p-6 sm:p-10 md:p-14 text-[13.5px] leading-relaxed print:text-[11.5px] print:leading-snug'
+            : 'p-6 sm:p-10 md:p-12 text-[12.5px] leading-relaxed print:text-[11px] print:leading-snug'
+      }`}
     >
       
       {/* Document Letterhead */}
@@ -202,40 +218,40 @@ export default function ContractDocument({ contract, liveSignature }: ContractDo
       )}
 
       {/* Contract Body Clauses - AUTO FORMATTED */}
-      <div className="space-y-5 print:space-y-2.5 text-zinc-800">
+      <div className={`space-y-4 ${isCompact ? 'space-y-2.5' : isSpacious ? 'space-y-5' : 'space-y-3.5'} print:space-y-2 text-zinc-800`}>
         
         {/* Section 1 */}
-        <section className="contract-section space-y-1.5 print:space-y-1">
-          <h2 className="text-xs print:text-[11px] font-bold text-zinc-950 font-sans uppercase tracking-wide border-b border-zinc-200 pb-1 print:pb-0.5 flex items-center justify-between">
+        <section className="contract-section space-y-1.5 print:space-y-1 break-inside-avoid" style={{ breakInside: 'avoid', pageBreakInside: 'avoid' }}>
+          <h2 className="contract-section-heading text-xs print:text-[11px] font-bold text-zinc-950 font-sans uppercase tracking-wide border-b border-zinc-200 pb-1 print:pb-0.5 flex items-center justify-between">
             <span>1. Scope of Digital Services &amp; Deliverables</span>
           </h2>
-          <p className="text-[12.5px] print:text-[10.5px] leading-relaxed print:leading-snug">
+          <p className={`contract-paragraph leading-relaxed print:leading-snug ${isCompact ? 'text-[11px] leading-tight' : 'text-[12.5px] print:text-[10.5px]'}`}>
             <strong>1.1 Professional Engagement:</strong> The Service Provider (&quot;Macrotek Digital Solutions&quot;) agrees to design, architect, configure, and deploy the digital systems, web applications, integrations, and automation workflows mutually agreed upon with the Client (&quot;{contract.client_name}&quot;) pursuant to this {contractTitle}.
           </p>
-          <p className="text-[12.5px] print:text-[10.5px] leading-relaxed print:leading-snug">
+          <p className={`contract-paragraph leading-relaxed print:leading-snug ${isCompact ? 'text-[11px] leading-tight' : 'text-[12.5px] print:text-[10.5px]'}`}>
             <strong>1.2 Scope Specification:</strong> {contract.scope_description && contract.scope_description.trim().length > 0 
               ? contract.scope_description 
               : 'Scope includes custom architecture development, multi-platform database synchronization, webhook triggers (including n8n / ClickUp / Google Workspace), and automated lead management.'}
           </p>
-          <p className="text-[12.5px] print:text-[10.5px] leading-relaxed print:leading-snug">
+          <p className={`contract-paragraph leading-relaxed print:leading-snug ${isCompact ? 'text-[11px] leading-tight' : 'text-[12.5px] print:text-[10.5px]'}`}>
             <strong>1.3 Change Orders:</strong> Any features, design revisions, or integrations requested by the Client outside the documented scope shall be handled through a formal written Change Order with mutually agreed-upon pricing before work on that item begins.
           </p>
         </section>
 
         {/* Section 2 */}
-        <section className="contract-section space-y-1.5 print:space-y-1">
-          <h2 className="text-xs print:text-[11px] font-bold text-zinc-950 font-sans uppercase tracking-wide border-b border-zinc-200 pb-1 print:pb-0.5">
+        <section className="contract-section space-y-1.5 print:space-y-1 break-inside-avoid" style={{ breakInside: 'avoid', pageBreakInside: 'avoid' }}>
+          <h2 className="contract-section-heading text-xs print:text-[11px] font-bold text-zinc-950 font-sans uppercase tracking-wide border-b border-zinc-200 pb-1 print:pb-0.5">
             2. Payment Milestones &amp; Billing Terms
           </h2>
           {hasProjectCost ? (
             <React.Fragment>
-              <p className="text-[12.5px] print:text-[10.5px] leading-relaxed print:leading-snug">
+              <p className={`contract-paragraph leading-relaxed print:leading-snug ${isCompact ? 'text-[11px] leading-tight' : 'text-[12.5px] print:text-[10.5px]'}`}>
                 <strong>2.1 Total Agreed Investment:</strong> The Client agrees to compensate the Provider the total sum of <strong>{currencySymbol}{totalCost.toLocaleString()} {currencyCode}</strong>.
               </p>
-              <p className="text-[12.5px] print:text-[10.5px] leading-relaxed print:leading-snug">
+              <p className={`contract-paragraph leading-relaxed print:leading-snug ${isCompact ? 'text-[11px] leading-tight' : 'text-[12.5px] print:text-[10.5px]'}`}>
                 <strong>2.2 Milestone Breakdown:</strong>
               </p>
-              <ul className="list-disc pl-5 print:pl-4 space-y-1 print:space-y-0.5 font-sans text-xs print:text-[10px]">
+              <ul className={`list-disc pl-5 print:pl-4 space-y-1 print:space-y-0.5 font-sans ${isCompact ? 'text-[10.5px]' : 'text-xs print:text-[10px]'}`}>
                 {hasDownpaymentPct ? (
                   <React.Fragment>
                     <li>
@@ -252,73 +268,73 @@ export default function ContractDocument({ contract, liveSignature }: ContractDo
                 )}
               </ul>
               {hasPaymentNotes && (
-                <p className="text-[12.5px] print:text-[10.5px] leading-relaxed print:leading-snug">
+                <p className={`contract-paragraph leading-relaxed print:leading-snug ${isCompact ? 'text-[11px] leading-tight' : 'text-[12.5px] print:text-[10.5px]'}`}>
                   <strong>2.3 Disbursement Instructions:</strong> {contract.payment_terms_notes}
                 </p>
               )}
             </React.Fragment>
           ) : (
-            <p className="text-[12.5px] print:text-[10.5px] leading-relaxed print:leading-snug">
+            <p className={`contract-paragraph leading-relaxed print:leading-snug ${isCompact ? 'text-[11px] leading-tight' : 'text-[12.5px] print:text-[10.5px]'}`}>
               <strong>2.1 Fee Determination:</strong> Commercial fees, milestone percentages, and currency for the services outlined herein shall be confirmed in writing by both parties prior to final deployment.
             </p>
           )}
-          <p className="text-[12.5px] print:text-[10.5px] leading-relaxed print:leading-snug">
+          <p className={`contract-paragraph leading-relaxed print:leading-snug ${isCompact ? 'text-[11px] leading-tight' : 'text-[12.5px] print:text-[10.5px]'}`}>
             <strong>{!hasProjectCost ? '2.2' : (hasPaymentNotes ? '2.4' : '2.3')} Third-Party Software &amp; APIs:</strong> The Client shall be directly responsible for all recurring subscriptions to external cloud services, domain registrars, hosting, or third-party APIs incurred for the project.
           </p>
         </section>
 
         {/* Section 3 */}
-        <section className="contract-section space-y-1.5 print:space-y-1">
-          <h2 className="text-xs print:text-[11px] font-bold text-zinc-950 font-sans uppercase tracking-wide border-b border-zinc-200 pb-1 print:pb-0.5">
+        <section className="contract-section space-y-1.5 print:space-y-1 break-inside-avoid" style={{ breakInside: 'avoid', pageBreakInside: 'avoid' }}>
+          <h2 className="contract-section-heading text-xs print:text-[11px] font-bold text-zinc-950 font-sans uppercase tracking-wide border-b border-zinc-200 pb-1 print:pb-0.5">
             3. Delivery, Review &amp; Master Handover
           </h2>
-          <p className="text-[12.5px] print:text-[10.5px] leading-relaxed print:leading-snug">
+          <p className={`contract-paragraph leading-relaxed print:leading-snug ${isCompact ? 'text-[11px] leading-tight' : 'text-[12.5px] print:text-[10.5px]'}`}>
             <strong>3.1 Acceptance Period:</strong> Upon notification by the Provider that the deliverable is live on staging or production, the Client shall have seven (7) business days to review all features and report any reproducible functional discrepancies.
           </p>
-          <p className="text-[12.5px] print:text-[10.5px] leading-relaxed print:leading-snug">
+          <p className={`contract-paragraph leading-relaxed print:leading-snug ${isCompact ? 'text-[11px] leading-tight' : 'text-[12.5px] print:text-[10.5px]'}`}>
             <strong>3.2 Administrative Turnover:</strong> Upon receipt of the final balance, the Provider shall issue the &quot;Turnover Packet&quot; containing all master administrative credentials, repository links, and API access keys.
           </p>
-          <p className="text-[12.5px] print:text-[10.5px] leading-relaxed print:leading-snug">
+          <p className={`contract-paragraph leading-relaxed print:leading-snug ${isCompact ? 'text-[11px] leading-tight' : 'text-[12.5px] print:text-[10.5px]'}`}>
             <strong>3.3 Security Ownership:</strong> The Client is solely responsible for changing passwords and safeguarding credentials immediately after turnover. The Provider shall not be liable for unauthorized access occurring subsequent to handover.
           </p>
         </section>
 
         {/* Section 4 */}
-        <section className="contract-section space-y-1.5 print:space-y-1">
-          <h2 className="text-xs print:text-[11px] font-bold text-zinc-950 font-sans uppercase tracking-wide border-b border-zinc-200 pb-1 print:pb-0.5">
+        <section className="contract-section space-y-1.5 print:space-y-1 break-inside-avoid" style={{ breakInside: 'avoid', pageBreakInside: 'avoid' }}>
+          <h2 className="contract-section-heading text-xs print:text-[11px] font-bold text-zinc-950 font-sans uppercase tracking-wide border-b border-zinc-200 pb-1 print:pb-0.5">
             4. Intellectual Property &amp; Licensing
           </h2>
-          <p className="text-[12.5px] print:text-[10.5px] leading-relaxed print:leading-snug">
+          <p className={`contract-paragraph leading-relaxed print:leading-snug ${isCompact ? 'text-[11px] leading-tight' : 'text-[12.5px] print:text-[10.5px]'}`}>
             <strong>4.1 Client Content:</strong> All bespoke branding, logos, trademarks, and text supplied by the Client remain the exclusive intellectual property of the Client.
           </p>
-          <p className="text-[12.5px] print:text-[10.5px] leading-relaxed print:leading-snug">
+          <p className={`contract-paragraph leading-relaxed print:leading-snug ${isCompact ? 'text-[11px] leading-tight' : 'text-[12.5px] print:text-[10.5px]'}`}>
             <strong>4.2 Final Deliverables:</strong> Upon payment of the final balance in full, the Client is granted full ownership rights of the customer-facing digital asset.
           </p>
-          <p className="text-[12.5px] print:text-[10.5px] leading-relaxed print:leading-snug">
+          <p className={`contract-paragraph leading-relaxed print:leading-snug ${isCompact ? 'text-[11px] leading-tight' : 'text-[12.5px] print:text-[10.5px]'}`}>
             <strong>4.3 Proprietary Architecture:</strong> Macrotek retains ownership of its proprietary pre-existing utility modules, build pipelines, and design system foundations, granting the Client a perpetual, non-exclusive license to use them in the operation of the delivered system.
           </p>
         </section>
 
         {/* Section 5 */}
-        <section className="contract-section space-y-1.5 print:space-y-1">
-          <h2 className="text-xs print:text-[11px] font-bold text-zinc-950 font-sans uppercase tracking-wide border-b border-zinc-200 pb-1 print:pb-0.5">
+        <section className="contract-section space-y-1.5 print:space-y-1 break-inside-avoid" style={{ breakInside: 'avoid', pageBreakInside: 'avoid' }}>
+          <h2 className="contract-section-heading text-xs print:text-[11px] font-bold text-zinc-950 font-sans uppercase tracking-wide border-b border-zinc-200 pb-1 print:pb-0.5">
             5. Data Privacy &amp; Confidentiality (Republic Act No. 10173)
           </h2>
-          <p className="text-[12.5px] print:text-[10.5px] leading-relaxed print:leading-snug">
+          <p className={`contract-paragraph leading-relaxed print:leading-snug ${isCompact ? 'text-[11px] leading-tight' : 'text-[12.5px] print:text-[10.5px]'}`}>
             <strong>5.1 Strict Confidentiality:</strong> Both parties agree to maintain the strict confidentiality of all proprietary, technical, and commercial information disclosed during this engagement.
           </p>
-          <p className="text-[12.5px] print:text-[10.5px] leading-relaxed print:leading-snug">
+          <p className={`contract-paragraph leading-relaxed print:leading-snug ${isCompact ? 'text-[11px] leading-tight' : 'text-[12.5px] print:text-[10.5px]'}`}>
             <strong>5.2 Compliance with Philippine Law:</strong> All collection, storage, and processing of customer and corporate data performed in connection with this project shall strictly comply with the Data Privacy Act of 2012 (RA 10173) of the Philippines.
           </p>
-          <p className="text-[12.5px] print:text-[10.5px] leading-relaxed print:leading-snug">
+          <p className={`contract-paragraph leading-relaxed print:leading-snug ${isCompact ? 'text-[11px] leading-tight' : 'text-[12.5px] print:text-[10.5px]'}`}>
             <strong>5.3 Warranty:</strong> The Provider provides a thirty (30) day stability warranty following launch to address any latent bugs within the agreed scope at zero additional cost.
           </p>
         </section>
 
         {/* Section 6 - SPECIAL PROVISIONS & BESPOKE COVENANTS (AUTO ADJUSTS) */}
         {hasCustomTerms && (
-          <section className="contract-section space-y-1.5 print:space-y-1 p-3.5 print:p-2 bg-zinc-50 border border-zinc-200 rounded-xl print:rounded-none">
-            <h2 className="text-xs print:text-[11px] font-bold text-zinc-950 font-sans uppercase tracking-wide border-b border-zinc-300 pb-1 print:pb-0.5 flex items-center gap-1.5">
+          <section className="contract-section space-y-1.5 print:space-y-1 p-3.5 print:p-2 bg-zinc-50 border border-zinc-200 rounded-xl print:rounded-none break-inside-avoid" style={{ breakInside: 'avoid', pageBreakInside: 'avoid' }}>
+            <h2 className="contract-section-heading text-xs print:text-[11px] font-bold text-zinc-950 font-sans uppercase tracking-wide border-b border-zinc-300 pb-1 print:pb-0.5 flex items-center gap-1.5">
               <Icons.ShieldAlert size={14} className="text-emerald-700" />
               <span>6. Special Provisions &amp; Bespoke Agreement Terms</span>
             </h2>
@@ -331,8 +347,13 @@ export default function ContractDocument({ contract, liveSignature }: ContractDo
       </div>
 
       {/* Execution & Signature Section */}
-      <div className="contract-signature-card mt-8 print:mt-4 pt-6 print:pt-3 border-t-2 border-zinc-900 font-sans">
-        <div className="text-center mb-5 print:mb-2">
+      <div 
+        className={`contract-signature-card border-t-2 border-zinc-900 font-sans break-inside-avoid ${
+          isCompact ? 'mt-4 pt-3' : isSpacious ? 'mt-8 pt-6' : 'mt-6 pt-4'
+        } print:mt-3 print:pt-2`}
+        style={{ breakInside: 'avoid', pageBreakInside: 'avoid' }}
+      >
+        <div className={`text-center ${isCompact ? 'mb-2' : 'mb-4'} print:mb-2`}>
           <h3 className="text-xs print:text-[11px] font-bold uppercase tracking-widest text-zinc-900">
             Signatures &amp; Legal Execution
           </h3>
@@ -341,15 +362,15 @@ export default function ContractDocument({ contract, liveSignature }: ContractDo
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 print:grid-cols-2 gap-6 print:gap-3">
+        <div className={`grid grid-cols-1 md:grid-cols-2 print:grid-cols-2 gap-4 ${isCompact ? 'gap-3' : 'gap-6'} print:gap-3`}>
           
           {/* Provider Signature Card */}
-          <div className="p-4 print:p-2.5 bg-zinc-50 rounded-xl border border-zinc-200 space-y-2 print:space-y-1">
+          <div className="p-3.5 print:p-2 bg-zinc-50 rounded-xl border border-zinc-200 space-y-1.5 print:space-y-1">
             <span className="text-[10px] print:text-[9px] font-bold uppercase tracking-wider text-zinc-400 block">
               For Service Provider:
             </span>
-            <div className="h-14 print:h-11 flex items-end border-b border-zinc-300 pb-1.5 print:pb-1">
-              <span className="font-serif italic text-2xl print:text-lg text-zinc-800 font-semibold tracking-wide">
+            <div className={`${isCompact ? 'h-11' : 'h-14'} print:h-11 flex items-end border-b border-zinc-300 pb-1.5 print:pb-1`}>
+              <span className={`font-serif italic text-zinc-800 font-semibold tracking-wide ${isCompact ? 'text-xl' : 'text-2xl print:text-lg'}`}>
                 Jason Millena
               </span>
             </div>
@@ -361,7 +382,7 @@ export default function ContractDocument({ contract, liveSignature }: ContractDo
           </div>
 
           {/* Client Signature Card */}
-          <div className="p-4 print:p-2.5 bg-zinc-50 rounded-xl border border-zinc-200 space-y-2 print:space-y-1" id="client-signature-display">
+          <div className="p-3.5 print:p-2 bg-zinc-50 rounded-xl border border-zinc-200 space-y-1.5 print:space-y-1" id="client-signature-display">
             <span className="text-[10px] print:text-[9px] font-bold uppercase tracking-wider text-zinc-400 block">
               For Authorized Client:
             </span>
