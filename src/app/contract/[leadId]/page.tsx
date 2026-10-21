@@ -1,7 +1,9 @@
-import { getOrCreateContractAction } from '@/app/contract/contract.actions';
+import { getContractRecord, getMaskedContract } from '@/lib/contractUtils';
 import ContractPageView from '@/components/contract/ContractPageView';
 import Link from 'next/link';
 import * as Icons from 'lucide-react';
+import { cookies } from 'next/headers';
+import { verifySessionToken } from '@/lib/auth';
 
 // FILE: src/app/contract/[leadId]/page.tsx
 
@@ -18,7 +20,7 @@ export default async function PublicContractPage(props: {
   const leadType = (searchParams.type === 'enrollment' ? 'enrollment' : 'appointment') as 'appointment' | 'enrollment';
   const providedCode = searchParams.code?.trim().toLowerCase();
 
-  const result = await getOrCreateContractAction(leadId, leadType);
+  const result = await getContractRecord(leadId, leadType);
 
   if (!result.success || !result.contract) {
     return (
@@ -43,16 +45,26 @@ export default async function PublicContractPage(props: {
     );
   }
 
+  // WOZ ZERO-LEAK SECURITY: Enforce cryptographically verified admin session for admin bypass
+  const cookieStore = await cookies();
+  const adminCookie = cookieStore.get('admin_session');
+  const isAdminAuthenticated = Boolean(
+    adminCookie?.value && verifySessionToken(adminCookie.value).valid
+  );
+
   const expectedCode = result.contract.access_code?.trim().toLowerCase();
   const isAutoUnlocked = Boolean(
-    searchParams.admin === 'true' ||
+    (searchParams.admin === 'true' && isAdminAuthenticated) ||
     (providedCode && expectedCode && providedCode === expectedCode)
   );
+
+  // WOZ ZERO-LEAK SECURITY: Mask all private terms and strip secret PIN if not unlocked
+  const contractToRender = isAutoUnlocked ? result.contract : getMaskedContract(result.contract);
 
   return (
     <div className="w-full">
       <ContractPageView 
-        initialContract={result.contract} 
+        initialContract={contractToRender} 
         initialUnlocked={isAutoUnlocked}
       />
     </div>

@@ -2,6 +2,7 @@
 
 import { sql } from '@/lib/db';
 import { revalidatePath } from 'next/cache';
+import { assertAdminSession } from '@/lib/auth';
 
 // FILE: src/app/(admin)/dashboard/operatingMode.actions.ts
 
@@ -9,6 +10,11 @@ export type PlatformOperatingMode = 'appointment' | 'enrollment';
 
 export async function switchOperatingModeAction(newMode: PlatformOperatingMode) {
   try {
+    const adminCheck = await assertAdminSession();
+    if (!adminCheck.valid) {
+      return { success: false, error: 'Unauthorized: Administrative credentials required' };
+    }
+
     const enableAppointments = newMode === 'appointment';
     const enableEnrollments = newMode === 'enrollment';
 

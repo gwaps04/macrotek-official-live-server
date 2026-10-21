@@ -2,6 +2,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { sql } from '@/lib/db';
+import { verifySessionToken } from '@/lib/auth';
 
 // Import the Client Sidebar
 import AdminSidebar from '@/components/admin/AdminSidebar';
@@ -12,12 +13,17 @@ export default async function DashboardLayout({
   children: React.ReactNode;
 }) {
   // ====================================================
-  // 1. THE AUTHENTICATION GUARD (Absolute Security)
+  // 1. THE AUTHENTICATION GUARD (HMAC Signature & Expiry Check)
   // ====================================================
   const cookieStore = await cookies();
   const session = cookieStore.get('admin_session');
 
   if (!session?.value) {
+    redirect('/login');
+  }
+
+  const sessionCheck = verifySessionToken(session.value);
+  if (!sessionCheck.valid || !sessionCheck.userId) {
     redirect('/login');
   }
 

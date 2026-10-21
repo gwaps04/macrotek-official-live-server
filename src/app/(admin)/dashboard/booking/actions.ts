@@ -3,6 +3,7 @@
 import { sql } from '@/lib/db';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
+import { assertAdminSession } from '@/lib/auth';
 
 const DAYS_OF_WEEK = [
   { id: 'monday', label: 'Monday' }, { id: 'tuesday', label: 'Tuesday' },
@@ -11,6 +12,9 @@ const DAYS_OF_WEEK = [
 ];
 
 export async function updateSettingsAction(formData: FormData) {
+  const adminCheck = await assertAdminSession();
+  if (!adminCheck.valid) redirect('/login');
+
   const newSchedule: Record<string, { active: boolean }> = {};
   DAYS_OF_WEEK.forEach(day => {
     newSchedule[day.id] = { active: formData.get(`day_${day.id}`) === 'on' };
@@ -42,6 +46,9 @@ export async function updateSettingsAction(formData: FormData) {
 }
 
 export async function addBlockedDateAction(formData: FormData) {
+  const adminCheck = await assertAdminSession();
+  if (!adminCheck.valid) redirect('/login');
+
   const date = formData.get('blockedDate') as string;
   const reason = formData.get('reason') as string;
   if (date && reason) {
@@ -52,6 +59,9 @@ export async function addBlockedDateAction(formData: FormData) {
 }
 
 export async function removeBlockedDateAction(formData: FormData) {
+  const adminCheck = await assertAdminSession();
+  if (!adminCheck.valid) redirect('/login');
+
   const id = formData.get('blockedId') as string;
   await sql`DELETE FROM booking_blocked_dates WHERE id = ${id}`;
   revalidatePath('/book', 'layout');
@@ -61,6 +71,9 @@ export async function removeBlockedDateAction(formData: FormData) {
 // This is the function that caused the crash. 
 // Now that it lives in a file marked with "use server" at the top, it is 100% safe to pass to Client Components.
 export async function updateStatusAction(formData: FormData) {
+  const adminCheck = await assertAdminSession();
+  if (!adminCheck.valid) redirect('/login');
+
   const id = formData.get('appointmentId') as string;
   const newStatus = formData.get('status') as string;
   await sql`UPDATE appointments SET status = ${newStatus} WHERE id = ${id}`;

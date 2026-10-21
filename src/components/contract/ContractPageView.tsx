@@ -57,17 +57,20 @@ export default function ContractPageView({ initialContract, initialUnlocked = fa
       
       const searchParams = new URLSearchParams(window.location.search);
       const urlCode = searchParams.get('code');
-      const expectedCode = (contract.access_code || '').trim().toLowerCase();
+      const codeToTry = urlCode || savedCode;
 
-      if (urlCode && expectedCode && urlCode.trim().toLowerCase() === expectedCode) {
-        setIsUnlocked(true);
-        sessionStorage.setItem(storageKey, urlCode.trim());
-        if (leadStorageKey) sessionStorage.setItem(leadStorageKey, urlCode.trim());
-      } else if (savedCode && expectedCode && savedCode.trim().toLowerCase() === expectedCode) {
-        setIsUnlocked(true);
+      if (codeToTry && !isUnlocked) {
+        verifyContractAccessCodeAction(contract.lead_id || contract.id, codeToTry).then(res => {
+          if (res.valid && res.contract) {
+            setContract(res.contract);
+            setIsUnlocked(true);
+            sessionStorage.setItem(storageKey, codeToTry);
+            if (leadStorageKey) sessionStorage.setItem(leadStorageKey, codeToTry);
+          }
+        }).catch(() => {});
       }
     }
-  }, [contract.id, contract.lead_id, contract.access_code]);
+  }, [contract.id, contract.lead_id, isUnlocked]);
 
   const handleLockDocument = () => {
     if (typeof window !== 'undefined') {
@@ -94,23 +97,13 @@ export default function ContractPageView({ initialContract, initialUnlocked = fa
     setIsVerifyingCode(true);
 
     try {
-      // 1. Direct validation against initialContract props (instant & resilient)
-      const currentPropCode = (contract.access_code || '').trim().replace(/[-\s]/g, '');
-      if (currentPropCode && entered.toLowerCase() === currentPropCode.toLowerCase()) {
-        setIsUnlocked(true);
-        if (typeof window !== 'undefined') {
-          sessionStorage.setItem(`contract_unlocked_${contract.id}`, entered);
-          if (contract.lead_id) {
-            sessionStorage.setItem(`contract_unlocked_${contract.lead_id}`, entered);
-          }
-        }
-        return;
-      }
-
-      // 2. Server-side validation (checks Neon DB & authoritative record)
+      // Server-side validation (checks Neon DB & authoritative record)
       const targetId = contract.lead_id || contract.id;
       const res = await verifyContractAccessCodeAction(targetId, entered);
       if (res.valid) {
+        if (res.contract) {
+          setContract(res.contract);
+        }
         setIsUnlocked(true);
         if (typeof window !== 'undefined') {
           sessionStorage.setItem(`contract_unlocked_${contract.id}`, entered);

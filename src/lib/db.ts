@@ -1,4 +1,5 @@
 import { neon } from '@neondatabase/serverless';
+import { INITIAL_ADMIN_PASSWORD_HASH, verifyPassword } from './auth';
 
 // ---------------------------------------------------------------------------
 // In-Memory Mock Store Definition & Initial Seeds (Based on schema.sql)
@@ -432,7 +433,7 @@ function createInitialStore(): MockStore {
       {
         id: 'a0000000-0000-0000-0000-000000000001',
         email: 'admin@macrotek.com',
-        password_hash: 'admin123#',
+        password_hash: INITIAL_ADMIN_PASSWORD_HASH,
         last_login: null,
         created_at: new Date('2026-01-01').toISOString()
       }
@@ -563,8 +564,13 @@ function processMockQuery(strings: TemplateStringsArray | string | string[], val
   }, '');
   const normalized: string = normalizeQuery(fullSql);
 
-  // 1. SELECT site_config
+  // 1. SELECT site_config (Zero-Leak Directive: Webhook secrets strictly protected)
   if (/^SELECT .* FROM site_config/i.test(normalized)) {
+    if (!/n8n_webhook_secret/i.test(normalized)) {
+      const safeConfig = { ...mockStore.site_config };
+      delete safeConfig.n8n_webhook_secret;
+      return [safeConfig];
+    }
     return [mockStore.site_config];
   }
 
@@ -615,20 +621,38 @@ function processMockQuery(strings: TemplateStringsArray | string | string[], val
     return [mockStore.booking_settings];
   }
 
-  // 5. Admin Users Authentication & Login
+  // 5. Admin Users Authentication & Login (Zero-Leak Protection)
   if (/FROM admin_users/i.test(normalized)) {
-    if (/SELECT id FROM admin_users/i.test(normalized)) {
+    // Direct authentication check: WHERE email = $1 AND password_hash = crypt($2, ...)
+    if (/password_hash\s*=\s*crypt/i.test(normalized)) {
       const email = values[0];
       const password = values[1];
-      const user = mockStore.admin_users.find(u => 
-        u.email === email && (password === 'admin123#' || password === u.password_hash || Boolean(password))
-      );
-      if (user) {
+      const user = mockStore.admin_users.find(u => u.email === email);
+      if (user && verifyPassword(password, user.password_hash)) {
         return [{ id: user.id }];
       }
       return [];
     }
-    return mockStore.admin_users;
+
+    // Lookup by email for internal server auth verification
+    if (/WHERE email =/i.test(normalized)) {
+      const email = values[0];
+      const user = mockStore.admin_users.find(u => u.email === email);
+      if (user) {
+        if (/password_hash/i.test(normalized)) {
+          return [{ id: user.id, email: user.email, password_hash: user.password_hash }];
+        }
+        return [{ id: user.id, email: user.email, created_at: user.created_at, last_login: user.last_login }];
+      }
+      return [];
+    }
+
+    // Zero-Leak Directive: Never return password_hash in general queries
+    return mockStore.admin_users.map(u => {
+      const safe = { ...u };
+      delete safe.password_hash;
+      return safe;
+    });
   }
   if (/^UPDATE admin_users/i.test(normalized)) {
     const id = values[0];

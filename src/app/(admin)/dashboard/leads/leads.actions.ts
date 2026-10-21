@@ -3,8 +3,10 @@
 import { sql } from '@/lib/db';
 import { revalidatePath } from 'next/cache';
 import { dispatchWebhook } from '@/lib/webhookDispatcher';
+import { assertAdminSession } from '@/lib/auth';
 
 // FILE: src/app/(admin)/dashboard/leads/leads.actions.ts
+// WOZ ZERO-LEAK SECURITY: Enforce admin session verification on all lead mutation actions.
 
 export async function updateLeadStatusAction(
   leadId: string,
@@ -12,6 +14,11 @@ export async function updateLeadStatusAction(
   newStatus: string
 ) {
   try {
+    const adminCheck = await assertAdminSession();
+    if (!adminCheck.valid) {
+      return { success: false, error: 'Unauthorized: Administrative credentials required' };
+    }
+
     if (type === 'appointment') {
       await sql`UPDATE appointments SET status = ${newStatus} WHERE id = ${leadId}`;
     } else {
@@ -32,6 +39,11 @@ export async function updateEnrollmentPaymentAction(
   paymentStatus: 'Paid' | 'Pending'
 ) {
   try {
+    const adminCheck = await assertAdminSession();
+    if (!adminCheck.valid) {
+      return { success: false, error: 'Unauthorized: Administrative credentials required' };
+    }
+
     await sql`UPDATE class_enrollments SET payment_status = ${paymentStatus} WHERE id = ${enrollmentId}`;
     revalidatePath('/dashboard/leads');
     revalidatePath('/dashboard/class-schedule');
@@ -47,6 +59,11 @@ export async function deleteLeadAction(
   type: 'appointment' | 'enrollment'
 ) {
   try {
+    const adminCheck = await assertAdminSession();
+    if (!adminCheck.valid) {
+      return { success: false, error: 'Unauthorized: Administrative credentials required' };
+    }
+
     if (type === 'appointment') {
       await sql`DELETE FROM appointments WHERE id = ${leadId}`;
     } else {
@@ -67,6 +84,10 @@ export async function resendLeadWebhookAction(
   type: 'appointment' | 'enrollment'
 ) {
   try {
+    const adminCheck = await assertAdminSession();
+    if (!adminCheck.valid) {
+      return { success: false, reason: 'Unauthorized: Administrative credentials required' };
+    }
     if (type === 'appointment') {
       const rows = await sql`
         SELECT 

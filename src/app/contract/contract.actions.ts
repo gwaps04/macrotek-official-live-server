@@ -2,234 +2,40 @@
 
 import { sql, ensureContractsSchema } from '@/lib/db';
 import { revalidatePath } from 'next/cache';
-import { getDeterministicAccessCode, generateRandomAccessCode } from '@/lib/contractUtils';
+import { 
+  getDeterministicAccessCode, 
+  generateRandomAccessCode, 
+  getContractRecord, 
+  getMaskedContract, 
+  type ContractData 
+} from '@/lib/contractUtils';
+import { assertAdminSession } from '@/lib/auth';
 
 // FILE: src/app/contract/contract.actions.ts
+// WOZ ZERO-LEAK SECURITY CORE: Contract mutations, signature authorization, and RBAC guards.
 
-export interface ContractData {
-  id: string;
-  lead_id: string;
-  lead_type: 'appointment' | 'enrollment';
-  client_name: string;
-  company_name: string;
-  client_address: string;
-  client_email: string;
-  client_phone: string;
-  contract_title?: string;
-  project_cost?: number | null;
-  downpayment_percentage?: number | null;
-  currency?: string;
-  access_code: string;
-  scope_description?: string;
-  custom_terms?: string;
-  payment_terms_notes?: string;
-  status: 'Draft' | 'Sent' | 'Signed';
-  signature_data?: string | null;
-  signature_type?: 'drawn' | 'typed';
-  signed_at?: string | null;
-  signed_by_name?: string | null;
-  signed_by_title?: string | null;
-  attachment_url?: string | null;
-  attachment_name?: string | null;
-  attachment_type?: string | null;
-  signing_method?: 'electronic' | 'manual_hardcopy';
-  esign_enabled?: boolean;
-  created_at: string;
-}
+export type { ContractData };
+export { getMaskedContract };
 
 export async function getOrCreateContractAction(
   leadId: string, 
   leadType: 'appointment' | 'enrollment' = 'appointment'
 ): Promise<{ success: boolean; contract?: ContractData; error?: string }> {
   try {
-    // 0. Ensure schema is synchronized against Neon DB
-    await ensureContractsSchema().catch(() => {});
+    const res = await getContractRecord(leadId, leadType);
+    if (!res.success || !res.contract) return res;
 
-    // 1. Check if contract record already exists (order by Signed status and recency)
-    const existing = await sql`
-      SELECT * FROM contracts 
-      WHERE lead_id = ${leadId} OR id::text = ${leadId} 
-      ORDER BY (CASE WHEN status = 'Signed' THEN 0 ELSE 1 END), created_at DESC 
-      LIMIT 1
-    `;
-
-    if (existing.length > 0) {
-      const c = existing[0];
-      let accessCode = c.access_code;
-      
-      // Auto-generate unique deterministic access code if missing on legacy record
-      if (!accessCode || String(accessCode).trim() === '') {
-        accessCode = getDeterministicAccessCode(leadId);
-        try {
-          await sql`UPDATE contracts SET access_code = ${accessCode} WHERE id::text = ${String(c.id)}`;
-        } catch {
-          // ignore error if column updating
-        }
-      }
-
+    // WOZ ZERO-LEAK SECURITY: If invoked via public RPC by an unauthenticated caller,
+    // mask the secret PIN, financial terms, and contact PII before returning.
+    const adminCheck = await assertAdminSession();
+    if (!adminCheck.valid) {
       return {
         success: true,
-        contract: {
-          id: String(c.id),
-          lead_id: String(c.lead_id),
-          lead_type: (c.lead_type || 'appointment') as 'appointment' | 'enrollment',
-          client_name: c.client_name || '',
-          company_name: c.company_name || '',
-          client_address: c.client_address || '',
-          client_email: c.client_email || '',
-          client_phone: c.client_phone || '',
-          contract_title: c.contract_title || c.project_title || 'Master Service Agreement',
-          project_cost: c.project_cost !== null && c.project_cost !== undefined && c.project_cost !== '' && !isNaN(Number(c.project_cost)) ? Number(c.project_cost) : null,
-          downpayment_percentage: c.downpayment_percentage !== null && c.downpayment_percentage !== undefined && c.downpayment_percentage !== '' && !isNaN(Number(c.downpayment_percentage)) ? Number(c.downpayment_percentage) : null,
-          currency: c.currency || '',
-          access_code: accessCode,
-          scope_description: c.scope_description || '',
-          custom_terms: c.custom_terms || '',
-          payment_terms_notes: c.payment_terms_notes || '',
-          status: (c.status || 'Draft') as 'Draft' | 'Sent' | 'Signed',
-          signature_data: c.signature_data || c.signature_svg || null,
-          signature_type: c.signature_type || 'drawn',
-          signed_at: c.signed_at || null,
-          signed_by_name: c.signed_by_name || c.signed_by || null,
-          signed_by_title: c.signed_by_title || null,
-          attachment_url: c.attachment_url || null,
-          attachment_name: c.attachment_name || null,
-          attachment_type: c.attachment_type || null,
-          signing_method: (c.signing_method || 'electronic') as 'electronic' | 'manual_hardcopy',
-          esign_enabled: c.esign_enabled !== false,
-          created_at: c.created_at || new Date().toISOString()
-        }
+        contract: getMaskedContract(res.contract)
       };
     }
 
-    // 2. Fetch lead info from appointments or enrollments
-    let clientName = '';
-    let clientEmail = '';
-    let clientPhone = '';
-    let clientAddress = '';
-    let companyName = '';
-
-    const apptRows = await sql`
-      SELECT * FROM appointments WHERE id = ${leadId} LIMIT 1
-    `;
-
-    if (apptRows.length > 0) {
-      const a = apptRows[0];
-      clientName = `${a.client_first_name || ''} ${a.client_last_name || ''}`.trim();
-      clientEmail = a.client_email || '';
-      clientPhone = a.client_phone || '';
-      clientAddress = a.client_address || '';
-
-      // Try extracting company from prequalification answers or notes
-      if (a.prequalification_answers) {
-        try {
-          const answers = typeof a.prequalification_answers === 'string' 
-            ? JSON.parse(a.prequalification_answers) 
-            : a.prequalification_answers;
-          for (const [k, v] of Object.entries(answers)) {
-            if (/company|business|organization/i.test(k) && typeof v === 'string') {
-              companyName = v;
-              break;
-            }
-          }
-        } catch {
-          // silent fallback
-        }
-      }
-    } else {
-      const enrollRows = await sql`
-        SELECT 
-          ce.*, c.title as class_title, c.price as class_price
-        FROM class_enrollments ce
-        LEFT JOIN class_schedules cs ON ce.schedule_id = cs.id
-        LEFT JOIN classes c ON cs.class_id = c.id
-        WHERE ce.id = ${leadId}
-        LIMIT 1
-      `;
-      if (enrollRows.length > 0) {
-        const e = enrollRows[0];
-        clientName = `${e.student_first_name || ''} ${e.student_last_name || ''}`.trim();
-        clientEmail = e.student_email || '';
-        clientPhone = e.student_phone || '';
-        clientAddress = e.student_address || '';
-      }
-    }
-
-    if (!clientName) {
-      clientName = 'Valued Client';
-    }
-
-    const accessCode = getDeterministicAccessCode(leadId);
-
-    // 3. Create the draft contract in DB / mockStore with EMPTY financials by default
-    let row: any = null;
-    try {
-      const inserted = await sql`
-        INSERT INTO contracts (
-          lead_id, lead_type, client_name, company_name, 
-          client_address, client_email, client_phone, 
-          project_title, contract_title, project_cost, downpayment_percentage, currency, 
-          access_code, scope_description, custom_terms, payment_terms_notes, status, esign_enabled
-        )
-        VALUES (
-          ${leadId}, ${leadType}, ${clientName}, ${companyName},
-          ${clientAddress}, ${clientEmail}, ${clientPhone},
-          'Master Service Agreement', 'Master Service Agreement', null, null, '', 
-          ${accessCode}, '', '', '', 'Draft', true
-        )
-        RETURNING *;
-      `;
-      row = inserted[0];
-    } catch (insertErr) {
-      console.warn('[Contract Insert Primary Warning, trying fallback]:', insertErr);
-      // Fallback: accommodates tables with legacy column definitions
-      try {
-        const fallbackInsert = await sql`
-          INSERT INTO contracts (
-            lead_id, lead_type, client_name, company_name, 
-            client_address, client_email, client_phone, 
-            project_title, contract_title, access_code, status
-          )
-          VALUES (
-            ${leadId}, ${leadType}, ${clientName}, ${companyName},
-            ${clientAddress}, ${clientEmail}, ${clientPhone},
-            'Master Service Agreement', 'Master Service Agreement', ${accessCode}, 'Draft'
-          )
-          RETURNING *;
-        `;
-        row = fallbackInsert[0];
-      } catch (fallbackErr) {
-        console.error('[Contract Insert Fallback Error]:', fallbackErr);
-      }
-    }
-
-    const resolvedRow = row || {};
-
-    return {
-      success: true,
-      contract: {
-        id: String(resolvedRow.id || crypto.randomUUID()),
-        lead_id: leadId,
-        lead_type: leadType,
-        client_name: clientName,
-        company_name: companyName,
-        client_address: clientAddress,
-        client_email: clientEmail,
-        client_phone: clientPhone,
-        contract_title: 'Master Service Agreement',
-        project_cost: null,
-        downpayment_percentage: null,
-        currency: '',
-        access_code: accessCode,
-        scope_description: '',
-        custom_terms: '',
-        payment_terms_notes: '',
-        status: 'Draft',
-        signing_method: 'electronic',
-        esign_enabled: true,
-        created_at: new Date().toISOString()
-      }
-    };
+    return res;
   } catch (err: any) {
     console.error('[Contract Action Error - getOrCreate]:', err);
     return { success: false, error: err.message || 'Failed to initialize contract' };
@@ -239,7 +45,7 @@ export async function getOrCreateContractAction(
 export async function verifyContractAccessCodeAction(
   leadId: string, 
   enteredCode: string
-): Promise<{ success: boolean; valid: boolean; error?: string }> {
+): Promise<{ success: boolean; valid: boolean; contract?: ContractData; error?: string }> {
   try {
     const cleanCode = enteredCode.trim().replace(/[-\s]/g, '');
     if (!cleanCode) {
@@ -255,29 +61,42 @@ export async function verifyContractAccessCodeAction(
     `;
 
     let hasContractWithCode = false;
+    let matched = false;
+
     for (const contract of rows) {
       const contractCode = String(contract.access_code || '').trim().replace(/[-\s]/g, '');
       if (contractCode) {
         hasContractWithCode = true;
         if (contractCode.toLowerCase() === cleanCode.toLowerCase()) {
-          return { success: true, valid: true };
+          matched = true;
+          break;
         }
       }
     }
 
     // 2. Fallback to deterministic code only if no contract with an access code exists in DB yet
-    if (!hasContractWithCode) {
+    if (!matched && !hasContractWithCode) {
       const deterministicCode = getDeterministicAccessCode(leadId);
       if (deterministicCode.toLowerCase() === cleanCode.toLowerCase()) {
-        return { success: true, valid: true };
+        matched = true;
       }
 
-      if (rows.length > 0 && rows[0].lead_id && rows[0].lead_id !== leadId) {
+      if (!matched && rows.length > 0 && rows[0].lead_id && rows[0].lead_id !== leadId) {
         const secondaryDeterministic = getDeterministicAccessCode(String(rows[0].lead_id));
         if (secondaryDeterministic.toLowerCase() === cleanCode.toLowerCase()) {
-          return { success: true, valid: true };
+          matched = true;
         }
       }
+    }
+
+    if (matched) {
+      // Securely hydrate and return full confidential contract to authorized client
+      const fullRes = await getContractRecord(leadId);
+      return { 
+        success: true, 
+        valid: true, 
+        contract: fullRes.contract 
+      };
     }
 
     return { success: true, valid: false };
@@ -303,22 +122,15 @@ export async function signContractAction(payload: {
     // 0. Ensure schema is synchronized against Neon DB
     await ensureContractsSchema().catch(() => {});
 
-    // If access code was provided, verify it with resilience
-    if (payload.accessCode && payload.accessCode.trim()) {
+    // WOZ ZERO-LEAK SECURITY: Enforce access code PIN or active administrative session
+    const adminCheck = await assertAdminSession();
+    if (!adminCheck.valid) {
+      if (!payload.accessCode || !payload.accessCode.trim()) {
+        return { success: false, error: 'Access code PIN is required to execute signature.' };
+      }
       const verify = await verifyContractAccessCodeAction(targetLeadId, payload.accessCode);
       if (!verify.valid) {
-        const check = await sql`
-          SELECT access_code FROM contracts 
-          WHERE lead_id = ${targetLeadId} OR id::text = ${targetLeadId} 
-             OR id::text = ${targetContractId} OR lead_id = ${targetContractId} 
-          LIMIT 1
-        `;
-        const codeInDb = check[0]?.access_code ? String(check[0].access_code).trim().replace(/[-\s]/g, '').toLowerCase() : '';
-        const entered = payload.accessCode.trim().replace(/[-\s]/g, '').toLowerCase();
-        const deterministic = getDeterministicAccessCode(targetLeadId).toLowerCase();
-        if (entered !== codeInDb && entered !== deterministic) {
-          return { success: false, error: 'Invalid access code. Please enter the correct code to sign.' };
-        }
+        return { success: false, error: 'Invalid access code. Please enter the correct code to sign.' };
       }
     }
 
@@ -401,13 +213,19 @@ export async function updateContractFinancialsAction(payload: {
   esignEnabled?: boolean;
 }) {
   try {
+    // WOZ ZERO-LEAK SECURITY: Enforce active administrative session
+    const adminCheck = await assertAdminSession();
+    if (!adminCheck.valid) {
+      return { success: false, error: 'Unauthorized: Administrative credentials required to modify contract financials' };
+    }
+
     const targetLeadId = payload.leadId || payload.contractId;
 
     // 0. Ensure schema is synchronized against Neon DB
     await ensureContractsSchema().catch(() => {});
 
     // 1. Ensure contract record exists in DB first (so update is never dropped)
-    await getOrCreateContractAction(targetLeadId, payload.leadType || 'appointment');
+    await getContractRecord(targetLeadId, payload.leadType || 'appointment');
 
     const esignVal = payload.esignEnabled !== undefined ? payload.esignEnabled : true;
     const projectCostVal = payload.projectCost !== undefined && payload.projectCost !== null && !isNaN(Number(payload.projectCost)) && String(payload.projectCost).trim() !== ''
@@ -501,6 +319,12 @@ export async function updateContractStatusAndAttachmentAction(payload: {
   signedByName?: string | null;
 }) {
   try {
+    // WOZ ZERO-LEAK SECURITY: Enforce active administrative session
+    const adminCheck = await assertAdminSession();
+    if (!adminCheck.valid) {
+      return { success: false, error: 'Unauthorized: Administrative credentials required to update contract status' };
+    }
+
     const signedAt = payload.status === 'Signed' ? new Date().toISOString() : null;
     const targetLeadId = payload.leadId || payload.contractId;
 
@@ -539,11 +363,17 @@ export async function updateContractStatusAndAttachmentAction(payload: {
 
 export async function regenerateAccessCodeAction(contractId: string, leadId?: string) {
   try {
+    // WOZ ZERO-LEAK SECURITY: Enforce active administrative session
+    const adminCheck = await assertAdminSession();
+    if (!adminCheck.valid) {
+      return { success: false, error: 'Unauthorized: Administrative credentials required to regenerate access code' };
+    }
+
     const newCode = generateRandomAccessCode();
     const effectiveLeadId = leadId || contractId;
 
     // Ensure contract exists before regenerating code
-    await getOrCreateContractAction(effectiveLeadId);
+    await getContractRecord(effectiveLeadId);
 
     await sql`
       UPDATE contracts SET access_code = ${newCode}
@@ -567,7 +397,13 @@ export async function regenerateAccessCodeAction(contractId: string, leadId?: st
 
 export async function toggleContractEsignAction(leadId: string, enabled: boolean) {
   try {
-    await getOrCreateContractAction(leadId);
+    // WOZ ZERO-LEAK SECURITY: Enforce active administrative session
+    const adminCheck = await assertAdminSession();
+    if (!adminCheck.valid) {
+      return { success: false, error: 'Unauthorized: Administrative credentials required to modify e-sign settings' };
+    }
+
+    await getContractRecord(leadId);
 
     await sql`
       UPDATE contracts SET esign_enabled = ${enabled}

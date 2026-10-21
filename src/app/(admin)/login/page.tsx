@@ -1,11 +1,11 @@
 import { sql } from '@/lib/db';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
+import { createSessionToken, verifyPassword } from '@/lib/auth';
 
 export default function LoginPage() {
   
-  // WOZ SECURITY PROTOCOL: Server Action for Auth
-  // This function executes entirely on the Node.js edge server, never in the browser.
+  // WOZ SECURITY PROTOCOL: Server Action for Auth with Tamper-Proof Session Tokens
   async function loginAction(formData: FormData) {
     "use server";
     
@@ -15,18 +15,42 @@ export default function LoginPage() {
     if (!email || !password) return;
 
     try {
-      // The crypt() function compares the raw password against the stored Blowfish hash securely in Postgres
-      // WARNING: Requires "CREATE EXTENSION IF NOT EXISTS pgcrypto;" in the database
-      const result = await sql`
-        SELECT id FROM admin_users 
-        WHERE email = ${email} 
-        AND password_hash = crypt(${password}, password_hash)
+      let authenticatedUserId: string | null = null;
+
+      // 1. Primary check with safe hash comparison
+      const users = await sql`
+        SELECT id, password_hash FROM admin_users 
+        WHERE email = ${email}
+        LIMIT 1
       `;
 
-      if (result.length === 1) {
-        // Issue mathematically secure session cookie (Next.js 15 syntax requires awaiting cookies)
+      if (users.length === 1 && users[0].password_hash) {
+        if (verifyPassword(password, users[0].password_hash)) {
+          authenticatedUserId = users[0].id;
+        }
+      }
+
+      // 2. Neon Postgres pgcrypto fallback if table was initialized with blowfish crypt()
+      if (!authenticatedUserId) {
+        try {
+          const cryptResult = await sql`
+            SELECT id FROM admin_users 
+            WHERE email = ${email} 
+            AND password_hash = crypt(${password}, password_hash)
+          `;
+          if (cryptResult.length === 1) {
+            authenticatedUserId = cryptResult[0].id;
+          }
+        } catch {
+          // pgcrypto extension not enabled or not Postgres
+        }
+      }
+
+      if (authenticatedUserId) {
+        // Issue mathematically secure HMAC-signed session cookie
+        const sessionToken = createSessionToken(authenticatedUserId);
         const cookieStore = await cookies();
-        cookieStore.set('admin_session', result[0].id, { 
+        cookieStore.set('admin_session', sessionToken, { 
           httpOnly: true, 
           secure: process.env.NODE_ENV === 'production', 
           sameSite: 'lax',
@@ -35,15 +59,11 @@ export default function LoginPage() {
         });
         
         // Update last login timestamp
-        await sql`UPDATE admin_users SET last_login = NOW() WHERE id = ${result[0].id}`;
+        await sql`UPDATE admin_users SET last_login = NOW() WHERE id = ${authenticatedUserId}`.catch(() => {});
       } else {
         throw new Error("Invalid credentials");
       }
-    } catch (error) {
-      // WOZ FIX: TELEMETRY ENABLED
-      console.log("🔥 CRITICAL LOGIN ERROR DETECTED 🔥");
-      console.log("1. DATABASE_URL Loaded?", !!process.env.DATABASE_URL);
-      console.error("2. EXACT ERROR TRACE:", error);
+    } catch {
       return; // Fail silently to the UI to prevent brute-force enumeration
     }
 
