@@ -1,11 +1,10 @@
+// FILE: src/components/admin/leads/LeadDetailModal.tsx
 "use client";
 
 import React, { useState, useTransition } from 'react';
-import Link from 'next/link';
 import * as Icons from 'lucide-react';
 import { UnifiedLead } from './types';
 import { LeadTypeBadge, LeadStatusBadge } from './LeadStatusBadge';
-import ContractManagerCard from './ContractManagerCard';
 import { 
   updateLeadStatusAction, 
   updateEnrollmentPaymentAction, 
@@ -13,16 +12,13 @@ import {
   resendLeadWebhookAction 
 } from '@/app/(admin)/dashboard/leads/leads.actions';
 
-// FILE: src/components/admin/leads/LeadDetailModal.tsx
-
 interface LeadDetailModalProps {
   lead: UnifiedLead | null;
   onClose: () => void;
   onRefresh: () => void;
-  onUpdateLead?: (updates: Partial<UnifiedLead>) => void;
 }
 
-export default function LeadDetailModal({ lead, onClose, onRefresh, onUpdateLead }: LeadDetailModalProps) {
+export default function LeadDetailModal({ lead, onClose, onRefresh }: LeadDetailModalProps) {
   const [isPending, startTransition] = useTransition();
   const [copyFeedback, setCopyFeedback] = useState<string | null>(null);
   const [webhookFeedback, setWebhookFeedback] = useState<{ success: boolean; msg: string } | null>(null);
@@ -61,33 +57,12 @@ export default function LeadDetailModal({ lead, onClose, onRefresh, onUpdateLead
     setTimeout(() => setCopyFeedback(null), 3000);
   };
 
-  const accessCode = lead.contractAccessCode || '';
-  const clientContractPath = `/contract/${lead.id}?type=${lead.type}`;
-  const contractPath = clientContractPath;
-  const clientContractUrl = typeof window !== 'undefined' 
-    ? `${window.location.origin}${clientContractPath}` 
-    : clientContractPath;
-
-  const handleCopyContractLink = () => {
-    navigator.clipboard.writeText(clientContractUrl);
-    setCopyFeedback('Copied client contract link to clipboard!');
-    setTimeout(() => setCopyFeedback(null), 3000);
-  };
-
-  const handleCopyInviteMessage = () => {
-    const codeSnippet = accessCode ? `\n\nConfidential Access PIN: ${accessCode}\n(Please enter this 6-digit PIN to securely unlock and review your agreement)` : '';
-    const msg = `Hi ${lead.firstName}, please review and electronically sign our Master Service Agreement with Macrotek Digital Solutions here:\n\n${clientContractUrl}${codeSnippet}`;
-    navigator.clipboard.writeText(msg);
-    setCopyFeedback('Copied client invite message with access code to clipboard!');
-    setTimeout(() => setCopyFeedback(null), 3000);
-  };
-
   const handleResendWebhook = () => {
     setWebhookFeedback(null);
     startTransition(async () => {
       const res = await resendLeadWebhookAction(lead.id, lead.type);
       if (res.success) {
-        setWebhookFeedback({ success: true, msg: 'Webhook dispatched successfully to n8n / ClickUp!' });
+        setWebhookFeedback({ success: true, msg: 'Webhook dispatched successfully!' });
       } else {
         setWebhookFeedback({ success: false, msg: res.reason || 'Failed to dispatch webhook' });
       }
@@ -119,18 +94,15 @@ export default function LeadDetailModal({ lead, onClose, onRefresh, onUpdateLead
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/70 backdrop-blur-xs">
-      <div 
-        className="fixed inset-0" 
-        onClick={onClose} 
-      />
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/70 backdrop-blur-sm">
+      <div className="fixed inset-0" onClick={onClose} />
 
       <div className="relative w-full max-w-2xl max-h-[90vh] bg-white rounded-3xl shadow-2xl border border-zinc-200 flex flex-col overflow-hidden z-10 animate-in fade-in zoom-in-95 duration-200">
         
         {/* Header */}
-        <div className="p-6 bg-zinc-50 border-b border-zinc-200 flex items-start justify-between">
+        <div className="p-6 bg-zinc-50 border-b border-zinc-200 flex items-start justify-between shrink-0">
           <div className="flex items-center gap-4">
-            <div className="w-13 h-13 rounded-2xl bg-zinc-900 text-white flex items-center justify-center text-lg font-bold tracking-tight">
+            <div className="w-12 h-12 rounded-2xl bg-zinc-900 text-white flex items-center justify-center text-lg font-bold tracking-tight shrink-0">
               {lead.firstName.charAt(0)}{lead.lastName.charAt(0)}
             </div>
             <div>
@@ -146,67 +118,29 @@ export default function LeadDetailModal({ lead, onClose, onRefresh, onUpdateLead
           </div>
           <button 
             onClick={onClose} 
-            className="w-8 h-8 rounded-full bg-zinc-200/80 hover:bg-zinc-300 text-zinc-600 flex items-center justify-center transition-colors"
+            className="w-8 h-8 rounded-full bg-zinc-200/80 hover:bg-zinc-300 text-zinc-600 flex items-center justify-center transition-colors cursor-pointer shrink-0"
           >
             <Icons.X size={16} />
           </button>
         </div>
 
-        {/* Scrollable Content */}
-        <div className="p-6 overflow-y-auto space-y-6 custom-scrollbar text-sm text-zinc-800">
+       {/* Scrollable Content */}
+        <div className="p-6 overflow-y-auto space-y-6 text-sm text-zinc-800" style={{ scrollbarWidth: 'thin' }}>
           
-          {/* Quick Contact & Action Buttons */}
+          {/* Bare-Minimum Action Buttons */}
           <div className="flex flex-wrap gap-2">
-            <Link
-              href={contractPath}
-              target="_blank"
-              className="inline-flex items-center gap-2 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-colors shadow-xs"
-            >
-              <Icons.FileCheck size={14} />
-              Contract &amp; e-Sign
-            </Link>
-            <button
-              onClick={handleCopyContractLink}
-              className="inline-flex items-center gap-2 px-3.5 py-2 bg-zinc-100 hover:bg-zinc-200 text-zinc-800 rounded-xl text-xs font-semibold transition-colors"
-            >
-              <Icons.Share2 size={14} className="text-zinc-600" />
-              Copy Contract Link
-            </button>
-            <button
-              onClick={handleCopyInviteMessage}
-              className="inline-flex items-center gap-2 px-3.5 py-2 bg-zinc-100 hover:bg-zinc-200 text-zinc-800 rounded-xl text-xs font-semibold transition-colors"
-            >
-              <Icons.MessageSquareQuote size={14} className="text-zinc-600" />
-              Copy Invite + PIN
-            </button>
-            <a 
-              href={`mailto:${lead.email}`}
-              className="inline-flex items-center gap-2 px-3.5 py-2 bg-zinc-100 hover:bg-zinc-200 text-zinc-800 rounded-xl text-xs font-semibold transition-colors"
-            >
-              <Icons.Mail size={14} className="text-zinc-600" />
-              Email Customer
-            </a>
-            <a 
-              href={`tel:${lead.phone.replace(/\s+/g, '')}`}
-              className="inline-flex items-center gap-2 px-3.5 py-2 bg-zinc-100 hover:bg-zinc-200 text-zinc-800 rounded-xl text-xs font-semibold transition-colors"
-            >
-              <Icons.Phone size={14} className="text-zinc-600" />
-              Call / WhatsApp
-            </a>
             <button 
               onClick={handleCopyClickUp}
-              className="inline-flex items-center gap-2 px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200/80 rounded-xl text-xs font-semibold transition-colors"
+              className="inline-flex items-center gap-2 px-3.5 py-2 min-h-[40px] bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200/80 rounded-xl text-xs font-semibold transition-colors cursor-pointer"
             >
-              <Icons.Copy size={14} />
-              Copy for ClickUp / CRM
+              <Icons.Copy size={14} /> Copy for ClickUp / CRM
             </button>
             <button 
               onClick={handleResendWebhook}
               disabled={isPending}
-              className="inline-flex items-center gap-2 px-3.5 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-200/80 rounded-xl text-xs font-semibold transition-colors disabled:opacity-50"
+              className="inline-flex items-center gap-2 px-3.5 py-2 min-h-[40px] bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-200/80 rounded-xl text-xs font-semibold transition-colors disabled:opacity-50 cursor-pointer"
             >
-              <Icons.Send size={14} />
-              {isPending ? 'Sending...' : 'Trigger Webhook'}
+              <Icons.Send size={14} /> {isPending ? 'Sending...' : 'Trigger Webhook'}
             </button>
           </div>
 
@@ -224,67 +158,8 @@ export default function LeadDetailModal({ lead, onClose, onRefresh, onUpdateLead
             </div>
           )}
 
-          {/* Prominent Signed Contract Notification Banner */}
-          {lead.contractStatus === 'Signed' && (
-            <div className="p-4.5 bg-emerald-50 border-2 border-emerald-400/80 rounded-2xl space-y-3 shadow-xs">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-xs">
-                    <Icons.ShieldCheck size={22} />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-[10px] uppercase font-black tracking-wider px-2 py-0.5 rounded-md bg-emerald-200 text-emerald-900">
-                        {lead.contractSigningMethod === 'manual_hardcopy' || lead.contractAttachmentUrl ? 'Hardcopy Executed' : 'Electronically Signed'}
-                      </span>
-                      <span className="text-xs font-bold text-emerald-950">
-                        {lead.contractTitle || 'Master Service Agreement'}
-                      </span>
-                    </div>
-                    <p className="text-xs text-emerald-800 mt-1">
-                      Executed by <strong className="text-emerald-950">{lead.contractSignedBy || lead.fullName}</strong>
-                      {lead.contractSignedByTitle ? ` (${lead.contractSignedByTitle})` : ''}
-                      {lead.contractSignedAt ? ` on ${new Date(lead.contractSignedAt).toLocaleString()}` : ''}.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 shrink-0">
-                  <Link
-                    href={contractPath}
-                    target="_blank"
-                    className="px-3.5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs rounded-xl transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer"
-                  >
-                    <Icons.ExternalLink size={13} />
-                    <span>View &amp; Download Signed PDF</span>
-                  </Link>
-                </div>
-              </div>
-
-              {/* Signature Stroke Thumbnail if Electronic */}
-              {lead.contractSignatureData && (
-                <div className="p-2.5 bg-white rounded-xl border border-emerald-200 flex items-center justify-between gap-4">
-                  <div className="text-[11px] text-zinc-500 font-medium">
-                    <span className="font-bold text-zinc-800 block">Digital Signature on Record:</span>
-                    <span>Verified via secure client e-sign session</span>
-                  </div>
-                  <div className="h-10 px-3 bg-zinc-50 border border-zinc-200 rounded-lg flex items-center justify-center">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={lead.contractSignatureData}
-                      alt="Client Signature"
-                      className="max-h-8 w-auto object-contain"
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
           {/* Dossier Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            
-            {/* Contact Details Card */}
             <div className="p-4 bg-zinc-50 rounded-2xl border border-zinc-200/80 space-y-2.5">
               <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-500 mb-2 flex items-center gap-1.5">
                 <Icons.UserCheck size={14} /> Contact Details
@@ -303,10 +178,9 @@ export default function LeadDetailModal({ lead, onClose, onRefresh, onUpdateLead
               </div>
             </div>
 
-            {/* Inbound Schedule Card */}
             <div className="p-4 bg-zinc-50 rounded-2xl border border-zinc-200/80 space-y-2.5">
               <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-500 mb-2 flex items-center gap-1.5">
-                <Icons.CalendarDays size={14} /> Schedule & Service
+                <Icons.CalendarDays size={14} /> Schedule &amp; Service
               </h4>
               <div>
                 <span className="text-[11px] text-zinc-500 block">Item / Topic</span>
@@ -331,20 +205,17 @@ export default function LeadDetailModal({ lead, onClose, onRefresh, onUpdateLead
                 </div>
               )}
             </div>
-
           </div>
 
-          {/* Notes Card */}
           {lead.notes && (
             <div className="p-4 bg-zinc-50 rounded-2xl border border-zinc-200/80">
               <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-500 mb-1 flex items-center gap-1.5">
-                <Icons.FileText size={14} /> Customer Notes & Objective
+                <Icons.FileText size={14} /> Customer Notes &amp; Objective
               </h4>
               <p className="text-zinc-700 font-medium whitespace-pre-wrap">{lead.notes}</p>
             </div>
           )}
 
-          {/* Pre-qualification Questionnaire Answers */}
           {lead.prequalificationAnswers && Object.keys(lead.prequalificationAnswers).length > 0 && (
             <div className="p-4 bg-emerald-50/50 rounded-2xl border border-emerald-200/80 space-y-3">
               <h4 className="text-xs font-bold uppercase tracking-wider text-emerald-800 flex items-center gap-1.5">
@@ -363,11 +234,8 @@ export default function LeadDetailModal({ lead, onClose, onRefresh, onUpdateLead
             </div>
           )}
 
-          {/* Service Agreement & Contract Engine */}
-          <ContractManagerCard lead={lead} onRefresh={onRefresh} onUpdateLead={onUpdateLead} />
-
           {/* Status & Pipeline Control */}
-          <div className="p-4 bg-zinc-900 text-white rounded-2xl space-y-3">
+          <div className="p-4 bg-zinc-900 text-white rounded-2xl space-y-3 shrink-0">
             <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-400">
               Pipeline Status Control
             </h4>
@@ -379,7 +247,7 @@ export default function LeadDetailModal({ lead, onClose, onRefresh, onUpdateLead
                   value={lead.status}
                   onChange={(e) => handleStatusChange(e.target.value)}
                   disabled={isPending}
-                  className="w-full bg-zinc-800 border border-zinc-700 text-white text-xs rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full h-10 bg-zinc-800 border border-zinc-700 text-white text-xs rounded-xl px-3 focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
                 >
                   <option value="Pending">Pending Review</option>
                   <option value="Confirmed">Confirmed</option>
@@ -396,7 +264,7 @@ export default function LeadDetailModal({ lead, onClose, onRefresh, onUpdateLead
                     value={lead.paymentStatus || 'Pending'}
                     onChange={(e) => handlePaymentChange(e.target.value as 'Paid' | 'Pending')}
                     disabled={isPending}
-                    className="w-full bg-zinc-800 border border-zinc-700 text-white text-xs rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="w-full h-10 bg-zinc-800 border border-zinc-700 text-white text-xs rounded-xl px-3 focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
                   >
                     <option value="Pending">Payment Pending</option>
                     <option value="Paid">Mark as Paid</option>
@@ -409,19 +277,18 @@ export default function LeadDetailModal({ lead, onClose, onRefresh, onUpdateLead
         </div>
 
         {/* Footer */}
-        <div className="p-4 bg-zinc-50 border-t border-zinc-200 flex items-center justify-between">
+        <div className="p-4 bg-zinc-50 border-t border-zinc-200 flex items-center justify-between shrink-0">
           <button 
             onClick={handleDelete}
             disabled={isPending}
-            className="text-xs text-red-600 hover:text-red-700 font-semibold flex items-center gap-1.5 transition-colors"
+            className="text-xs text-red-600 hover:text-red-700 font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
           >
-            <Icons.Trash2 size={14} />
-            Delete Record
+            <Icons.Trash2 size={14} /> Delete Record
           </button>
           
           <button 
             onClick={onClose}
-            className="px-5 py-2 bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-bold rounded-xl transition-colors"
+            className="px-5 py-2.5 min-h-[40px] bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-bold rounded-xl transition-colors cursor-pointer"
           >
             Done
           </button>

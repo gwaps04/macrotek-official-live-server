@@ -1,3 +1,4 @@
+// FILE: src/components/admin/leads/LeadsCommandCenter.tsx
 "use client";
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -8,8 +9,6 @@ import LeadsStatsHeader from './LeadsStatsHeader';
 import LeadsFilterBar from './LeadsFilterBar';
 import LeadsTable from './LeadsTable';
 import LeadDetailModal from './LeadDetailModal';
-
-// FILE: src/components/admin/leads/LeadsCommandCenter.tsx
 
 interface LeadsCommandCenterProps {
   initialLeads: UnifiedLead[];
@@ -306,7 +305,7 @@ export default function LeadsCommandCenter({ initialLeads }: LeadsCommandCenterP
       {/* Main Data Table */}
       <LeadsTable 
         leads={filteredLeads}
-        onSelectLead={(lead) => setSelectedLead(lead)}
+        onViewLead={setSelectedLead}
       />
 
       {/* Comprehensive Lead Dossier Modal */}
