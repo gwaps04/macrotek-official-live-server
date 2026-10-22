@@ -39,10 +39,6 @@ export default function LeadsCommandCenter({ initialLeads }: LeadsCommandCenterP
     });
   }, [initialLeads]);
 
-  const handleUpdateSelectedLead = (updates: Partial<UnifiedLead>) => {
-    setSelectedLead(prev => prev ? { ...prev, ...updates } : null);
-  };
-
   // Filter and Search Pipeline
   const filteredLeads = useMemo(() => {
     // Current date helpers for preset comparison
@@ -314,7 +310,6 @@ export default function LeadsCommandCenter({ initialLeads }: LeadsCommandCenterP
           lead={selectedLead}
           onClose={() => setSelectedLead(null)}
           onRefresh={() => router.refresh()}
-          onUpdateLead={handleUpdateSelectedLead}
         />
       )}
 
