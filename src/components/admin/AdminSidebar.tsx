@@ -1,3 +1,4 @@
+// FILE: src/components/layout/AdminSidebar.tsx
 "use client";
 
 import React, { useState } from 'react';
@@ -45,18 +46,18 @@ export default function AdminSidebar({ enableAppointments, enableEnrollments }: 
         { name: 'Product Catalog', href: '/dashboard/products', icon: Icons.Package },
         { name: 'Image Gallery', href: '/dashboard/gallery', icon: Icons.Image },
         { name: 'Success Stories', href: '/dashboard/testimonials', icon: Icons.MessageSquare },
-        // WOZ FIX: Added the new CMS modules to the navigation
         { name: 'News & Updates', href: '/dashboard/announcements', icon: Icons.Megaphone },
         { name: 'Knowledge Base', href: '/dashboard/faqs', icon: Icons.HelpCircle },
       ]
     }
   ];
 
+  // WOZ UPGRADE: Added "Master Templates" directly below Leads Command Center
   const inboundAndRevenueItems: NavItem[] = [
-    { name: 'Leads Command Center', href: '/dashboard/leads', icon: Icons.Inbox, isHighlight: true }
+    { name: 'Leads Command Center', href: '/dashboard/leads', icon: Icons.Inbox, isHighlight: true },
+    { name: 'Master Templates', href: '/dashboard/templates', icon: Icons.LayoutTemplate, isHighlight: false }
   ];
   
-  // Single Active Platform Operating Mode: strictly either appointment or enrollment
   const isEnrollmentMode = Boolean(enableEnrollments && !enableAppointments);
 
   if (isEnrollmentMode) {

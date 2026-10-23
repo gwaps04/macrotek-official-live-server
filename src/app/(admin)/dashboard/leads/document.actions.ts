@@ -79,7 +79,7 @@ export async function generateDocumentAction(leadId: string, leadType: string, t
     const accessCode = Math.floor(100000 + Math.random() * 900000).toString();
     const requireSignature = processedJson.require_signature ?? false;
 
-    // WOZ FIX: Explicitly use JSON.stringify() in the SQL command to prevent Neon driver data loss
+    // Explicitly use JSON.stringify() in the SQL command to prevent Neon driver data loss
     const jsonStringPayload = JSON.stringify(processedJson);
 
     const result = await sql`
@@ -106,6 +106,17 @@ export async function generateDocumentAction(leadId: string, leadType: string, t
 
     revalidatePath('/dashboard/leads');
     return { success: true, document: result[0] };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+// WOZ UPGRADE: Secure Deletion Action
+export async function deleteDocumentAction(documentId: string) {
+  try {
+    await sql`DELETE FROM lead_documents WHERE id = ${documentId}`;
+    revalidatePath('/dashboard/leads');
+    return { success: true };
   } catch (error: any) {
     return { success: false, error: error.message };
   }

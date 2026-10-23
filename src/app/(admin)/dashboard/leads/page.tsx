@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 export default async function LeadsPage() {
-  // WOZ FIX: Upgraded SQL with LATERAL JOIN to fetch the latest Document Status per lead
+  // WOZ UPGRADE: Option B "Highest Achievement" SQL logic applied via custom ORDER BY CASE
   const [appointments, enrollments] = await Promise.all([
     sql`
       SELECT a.*, 
@@ -18,7 +18,14 @@ export default async function LeadsPage() {
         SELECT status, access_code 
         FROM lead_documents 
         WHERE lead_id::text = a.id::text AND lead_type = 'appointment'
-        ORDER BY created_at DESC 
+        ORDER BY 
+          CASE 
+            WHEN status IN ('Completed', 'Completed - Hardcopy', 'Signed') THEN 1
+            WHEN status = 'Sent' THEN 2
+            WHEN status = 'Draft' THEN 3
+            ELSE 4
+          END ASC,
+          created_at DESC 
         LIMIT 1
       ) ld ON true
       ORDER BY a.created_at DESC
@@ -34,14 +41,20 @@ export default async function LeadsPage() {
         SELECT status, access_code 
         FROM lead_documents 
         WHERE lead_id::text = ce.id::text AND lead_type = 'enrollment'
-        ORDER BY created_at DESC 
+        ORDER BY 
+          CASE 
+            WHEN status IN ('Completed', 'Completed - Hardcopy', 'Signed') THEN 1
+            WHEN status = 'Sent' THEN 2
+            WHEN status = 'Draft' THEN 3
+            ELSE 4
+          END ASC,
+          created_at DESC 
         LIMIT 1
       ) ld ON true
       ORDER BY ce.created_at DESC
     `
   ]);
 
-  // Unify standard appointments and class enrollments into a single pipeline array
   const unifiedLeads: UnifiedLead[] = [
     ...appointments.map((a: any) => ({
       id: a.id,
@@ -59,8 +72,6 @@ export default async function LeadsPage() {
       notes: a.client_notes,
       prequalificationAnswers: a.prequalification_answers || {},
       createdAt: a.created_at,
-      
-      // WOZ FIX: Map the newly fetched contract data to the UnifiedLead object
       contractStatus: a.contract_status,
       contractAccessCode: a.contract_access_code,
     })),
@@ -80,8 +91,6 @@ export default async function LeadsPage() {
       paymentStatus: e.payment_status || 'Pending',
       price: e.class_price ? Number(e.class_price) : undefined,
       createdAt: e.created_at,
-      
-      // WOZ FIX: Map the newly fetched contract data to the UnifiedLead object
       contractStatus: e.contract_status,
       contractAccessCode: e.contract_access_code,
     }))

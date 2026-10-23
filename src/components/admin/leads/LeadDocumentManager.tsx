@@ -7,7 +7,8 @@ import Link from 'next/link';
 import { 
   getFormTemplatesAction, 
   generateDocumentAction, 
-  getLeadDocumentsAction 
+  getLeadDocumentsAction,
+  deleteDocumentAction // WOZ FIX: Imported the new secure delete action
 } from '@/app/(admin)/dashboard/leads/document.actions';
 
 interface LeadDocumentManagerProps {
@@ -31,7 +32,6 @@ export default function LeadDocumentManager({ leadId, leadType, leadFullName }: 
         getLeadDocumentsAction(leadId)
       ]);
       
-      // WOZ FIX: Added || [] to satisfy strict TypeScript null checking
       if (tplRes.success) setTemplates(tplRes.templates || []);
       if (docRes.success) setDocuments(docRes.documents || []);
       
@@ -51,6 +51,23 @@ export default function LeadDocumentManager({ leadId, leadType, leadFullName }: 
         setSelectedTemplate(''); // Reset dropdown
       } else {
         alert(`Failed to generate document: ${res.error}`);
+      }
+    });
+  };
+
+  // WOZ UPGRADE: Secure Deletion Handler with UI Optimistic Update
+  const handleDeleteDocument = (docId: string, docTitle: string) => {
+    if (!window.confirm(`Are you sure you want to completely delete "${docTitle}"?\n\nThis action cannot be undone and will break the link for the client.`)) {
+      return;
+    }
+
+    startTransition(async () => {
+      const res = await deleteDocumentAction(docId);
+      if (res.success) {
+        // Instantly remove it from the UI upon successful database deletion
+        setDocuments(prev => prev.filter(doc => doc.id !== docId));
+      } else {
+        alert(`Failed to delete document: ${res.error}`);
       }
     });
   };
@@ -110,7 +127,7 @@ export default function LeadDocumentManager({ leadId, leadType, leadFullName }: 
                   <h5 className="text-sm font-bold text-zinc-900">{doc.title}</h5>
                   <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-md ${
                     doc.status === 'Draft' ? 'bg-amber-100 text-amber-800' :
-                    doc.status === 'Completed' ? 'bg-emerald-100 text-emerald-800' :
+                    doc.status === 'Completed' || doc.status === 'Completed - Hardcopy' ? 'bg-emerald-100 text-emerald-800' :
                     'bg-blue-100 text-blue-800'
                   }`}>
                     {doc.status}
@@ -121,13 +138,26 @@ export default function LeadDocumentManager({ leadId, leadType, leadFullName }: 
                 </p>
               </div>
               
-              <Link
-                href={`/dashboard/documents/${doc.id}`}
-                target="_blank"
-                className="px-4 py-2 bg-zinc-100 group-hover:bg-indigo-50 text-zinc-700 group-hover:text-indigo-700 text-xs font-bold rounded-lg transition-colors flex items-center justify-center gap-1.5 shrink-0"
-              >
-                <Icons.ExternalLink size={14} /> Open Editor
-              </Link>
+              {/* WOZ FIX: Action Button Group (Open Editor + Delete) */}
+              <div className="flex items-center justify-end gap-2 w-full sm:w-auto mt-2 sm:mt-0">
+                <Link
+                  href={`/dashboard/documents/${doc.id}`}
+                  target="_blank"
+                  className="flex-1 sm:flex-none px-4 py-2 bg-zinc-100 group-hover:bg-indigo-50 text-zinc-700 group-hover:text-indigo-700 text-xs font-bold rounded-lg transition-colors flex items-center justify-center gap-1.5"
+                >
+                  <Icons.ExternalLink size={14} /> Open Editor
+                </Link>
+                
+                <button
+                  onClick={() => handleDeleteDocument(doc.id, doc.title)}
+                  disabled={isPending}
+                  title="Delete Document"
+                  className="p-2 bg-white border border-red-200 text-red-500 hover:bg-red-50 hover:text-red-700 hover:border-red-300 rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center shrink-0 cursor-pointer"
+                >
+                  <Icons.Trash2 size={16} />
+                </button>
+              </div>
+
             </div>
           ))}
         </div>
