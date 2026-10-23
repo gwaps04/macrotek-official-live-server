@@ -4,7 +4,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import * as Icons from 'lucide-react';
-import { UnifiedLead, FilterType, StatusFilter, DatePreset, DateTarget } from './types';
+import { UnifiedLead, FilterType, DatePreset, DateTarget } from './types';
 import LeadsStatsHeader from './LeadsStatsHeader';
 import LeadsFilterBar from './LeadsFilterBar';
 import LeadsTable from './LeadsTable';
@@ -20,8 +20,10 @@ export default function LeadsCommandCenter({ initialLeads }: LeadsCommandCenterP
   // State for search and filters
   const [searchQuery, setSearchQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<FilterType>('all');
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
-  const [contractFilter, setContractFilter] = useState<'all' | 'Signed' | 'Pending'>('all');
+  
+  // Advanced Contract Filtering State
+  const [contractFilter, setContractFilter] = useState<'all' | 'signed' | 'unsigned' | 'none'>('all');
+  
   const [datePreset, setDatePreset] = useState<DatePreset>('all');
   const [dateTarget, setDateTarget] = useState<DateTarget>('scheduled');
   const [customStartDate, setCustomStartDate] = useState('');
@@ -41,7 +43,6 @@ export default function LeadsCommandCenter({ initialLeads }: LeadsCommandCenterP
 
   // Filter and Search Pipeline
   const filteredLeads = useMemo(() => {
-    // Current date helpers for preset comparison
     const now = new Date();
     const todayStr = now.toISOString().split('T')[0];
 
@@ -63,22 +64,23 @@ export default function LeadsCommandCenter({ initialLeads }: LeadsCommandCenterP
         return false;
       }
 
-      // 2. Status filter
-      if (statusFilter !== 'all') {
-        const leadStatus = (lead.status || '').toLowerCase();
-        const targetStatus = statusFilter.toLowerCase();
-        if (leadStatus !== targetStatus) return false;
-      }
-
-      // 2b. Contract filter
+      // 2. Intelligent Contract Filter (WOZ FIX: Bulletproof String override for TypeScript)
       if (contractFilter !== 'all') {
-        if (contractFilter === 'Signed' && lead.contractStatus !== 'Signed') return false;
-        if (contractFilter === 'Pending' && lead.contractStatus === 'Signed') return false;
+        // By wrapping in String(), we force TS to evaluate it as a string, ignoring strict type overlaps
+        const cs = String(lead.contractStatus || '').trim();
+        
+        if (contractFilter === 'signed') {
+          // Checks for new 'Completed' status or legacy 'Signed' status
+          if (cs !== 'Completed' && cs !== 'Completed - Hardcopy' && cs !== 'Signed') return false;
+        } else if (contractFilter === 'unsigned') {
+          if (cs !== 'Draft' && cs !== 'Sent') return false;
+        } else if (contractFilter === 'none') {
+          if (cs !== '' && cs !== 'None') return false;
+        }
       }
 
       // 3. Date filter
       if (datePreset !== 'all') {
-        // Resolve target date in YYYY-MM-DD
         const leadDateStr = dateTarget === 'scheduled'
           ? (lead.date && /^\d{4}-\d{2}-\d{2}$/.test(lead.date) ? lead.date : (lead.createdAt ? lead.createdAt.split('T')[0] : ''))
           : (lead.createdAt ? lead.createdAt.split('T')[0] : '');
@@ -109,7 +111,9 @@ export default function LeadsCommandCenter({ initialLeads }: LeadsCommandCenterP
         const matchesNotes = (lead.notes || '').toLowerCase().includes(q);
         const matchesCompany = (lead.companyName || '').toLowerCase().includes(q);
         const matchesCode = (lead.contractAccessCode || '').toLowerCase().includes(q);
-        const matchesContractStatus = (lead.contractStatus || '').toLowerCase().includes(q);
+        
+        // WOZ FIX: String override for search
+        const matchesContractStatus = String(lead.contractStatus || '').toLowerCase().includes(q);
         
         let matchesAnswers = false;
         if (lead.prequalificationAnswers) {
@@ -140,7 +144,6 @@ export default function LeadsCommandCenter({ initialLeads }: LeadsCommandCenterP
   }, [
     initialLeads, 
     typeFilter, 
-    statusFilter, 
     contractFilter,
     datePreset, 
     dateTarget, 
@@ -152,7 +155,6 @@ export default function LeadsCommandCenter({ initialLeads }: LeadsCommandCenterP
   const hasActiveFilters = Boolean(
     searchQuery.trim() !== '' || 
     typeFilter !== 'all' || 
-    statusFilter !== 'all' || 
     contractFilter !== 'all' ||
     datePreset !== 'all' ||
     customStartDate ||
@@ -162,7 +164,6 @@ export default function LeadsCommandCenter({ initialLeads }: LeadsCommandCenterP
   const handleResetFilters = () => {
     setSearchQuery('');
     setTypeFilter('all');
-    setStatusFilter('all');
     setContractFilter('all');
     setDatePreset('all');
     setDateTarget('scheduled');
@@ -186,7 +187,6 @@ export default function LeadsCommandCenter({ initialLeads }: LeadsCommandCenterP
       'Topic / Class',
       'Event Date',
       'Event Time',
-      'Status',
       'Payment Status',
       'Contract Status',
       'Access Code',
@@ -209,9 +209,8 @@ export default function LeadsCommandCenter({ initialLeads }: LeadsCommandCenterP
       `"${l.title.replace(/"/g, '""')}"`,
       `"${l.date}"`,
       `"${l.time}"`,
-      `"${l.status}"`,
       `"${l.paymentStatus || 'N/A'}"`,
-      `"${l.contractStatus || 'Draft'}"`,
+      `"${String(l.contractStatus || 'Draft')}"`, // WOZ FIX: String override for CSV
       `"${l.contractAccessCode || ''}"`,
       `"${l.contractCost || 0}"`,
       `"${l.contractCurrency || 'PHP'}"`,
@@ -278,8 +277,6 @@ export default function LeadsCommandCenter({ initialLeads }: LeadsCommandCenterP
         onSearchChange={setSearchQuery}
         typeFilter={typeFilter}
         onTypeFilterChange={setTypeFilter}
-        statusFilter={statusFilter}
-        onStatusFilterChange={setStatusFilter}
         contractFilter={contractFilter}
         onContractFilterChange={setContractFilter}
         datePreset={datePreset}

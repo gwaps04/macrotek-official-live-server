@@ -4,13 +4,30 @@
 import React, { useState, useTransition } from 'react';
 import * as Icons from 'lucide-react';
 import { UnifiedLead } from './types';
-import { LeadTypeBadge, LeadStatusBadge } from './LeadStatusBadge';
+import LeadDocumentManager from './LeadDocumentManager';
 import { 
-  updateLeadStatusAction, 
   updateEnrollmentPaymentAction, 
   deleteLeadAction, 
   resendLeadWebhookAction 
 } from '@/app/(admin)/dashboard/leads/leads.actions';
+
+// WOZ FIX: Inlined the LeadTypeBadge so we don't need the deleted file anymore!
+function LeadTypeBadge({ type }: { type: string }) {
+  if (type === 'appointment') {
+    return (
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/80">
+        <Icons.CalendarCheck size={13} className="text-emerald-600" />
+        Appointment
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200/80">
+      <Icons.GraduationCap size={13} className="text-indigo-600" />
+      Enrollment
+    </span>
+  );
+}
 
 interface LeadDetailModalProps {
   lead: UnifiedLead | null;
@@ -70,13 +87,6 @@ export default function LeadDetailModal({ lead, onClose, onRefresh }: LeadDetail
     });
   };
 
-  const handleStatusChange = (newStatus: string) => {
-    startTransition(async () => {
-      await updateLeadStatusAction(lead.id, lead.type, newStatus);
-      onRefresh();
-    });
-  };
-
   const handlePaymentChange = (newPayment: 'Paid' | 'Pending') => {
     startTransition(async () => {
       await updateEnrollmentPaymentAction(lead.id, newPayment);
@@ -108,8 +118,8 @@ export default function LeadDetailModal({ lead, onClose, onRefresh }: LeadDetail
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="text-xl font-bold text-zinc-950">{lead.fullName}</h3>
+                {/* WOZ FIX: Uses the inline badge now, and old pipeline status is gone */}
                 <LeadTypeBadge type={lead.type} />
-                <LeadStatusBadge status={lead.status} />
               </div>
               <p className="text-xs text-zinc-500 mt-1">
                 Captured {new Date(lead.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
@@ -234,30 +244,20 @@ export default function LeadDetailModal({ lead, onClose, onRefresh }: LeadDetail
             </div>
           )}
 
-          {/* Status & Pipeline Control */}
-          <div className="p-4 bg-zinc-900 text-white rounded-2xl space-y-3 shrink-0">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-400">
-              Pipeline Status Control
-            </h4>
-            
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="text-[11px] text-zinc-400 block mb-1">Lead Status</label>
-                <select 
-                  value={lead.status}
-                  onChange={(e) => handleStatusChange(e.target.value)}
-                  disabled={isPending}
-                  className="w-full h-10 bg-zinc-800 border border-zinc-700 text-white text-xs rounded-xl px-3 focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
-                >
-                  <option value="Pending">Pending Review</option>
-                  <option value="Confirmed">Confirmed</option>
-                  <option value="Registered">Registered</option>
-                  <option value="Completed">Completed</option>
-                  <option value="Cancelled">Cancelled</option>
-                </select>
-              </div>
+          {/* DYNAMIC FORM ENGINE */}
+          <LeadDocumentManager 
+            leadId={lead.id} 
+            leadType={lead.type} 
+            leadFullName={lead.fullName} 
+          />
 
-              {lead.type === 'enrollment' && (
+          {/* Payment Status (Enrollments Only) */}
+          {lead.type === 'enrollment' && (
+            <div className="p-4 bg-zinc-900 text-white rounded-2xl space-y-3 shrink-0">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-400">
+                Payment Control
+              </h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="text-[11px] text-zinc-400 block mb-1">Payment Status</label>
                   <select 
@@ -270,9 +270,9 @@ export default function LeadDetailModal({ lead, onClose, onRefresh }: LeadDetail
                     <option value="Paid">Mark as Paid</option>
                   </select>
                 </div>
-              )}
+              </div>
             </div>
-          </div>
+          )}
 
         </div>
 

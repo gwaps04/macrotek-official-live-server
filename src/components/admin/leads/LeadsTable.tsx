@@ -4,7 +4,24 @@
 import React from 'react';
 import * as Icons from 'lucide-react';
 import { UnifiedLead } from './types';
-import { LeadTypeBadge, LeadStatusBadge } from './LeadStatusBadge';
+
+// WOZ FIX: Inlined the LeadTypeBadge so we don't need the deleted file anymore!
+function LeadTypeBadge({ type }: { type: string }) {
+  if (type === 'appointment') {
+    return (
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/80">
+        <Icons.CalendarCheck size={13} className="text-emerald-600" />
+        Appointment
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200/80">
+      <Icons.GraduationCap size={13} className="text-indigo-600" />
+      Enrollment
+    </span>
+  );
+}
 
 interface LeadsTableProps {
   leads: UnifiedLead[];
@@ -35,7 +52,8 @@ export default function LeadsTable({ leads, onViewLead }: LeadsTableProps) {
               <th className="px-6 py-4 text-[11px] font-bold text-zinc-500 uppercase tracking-wider">Client / Student</th>
               <th className="px-6 py-4 text-[11px] font-bold text-zinc-500 uppercase tracking-wider">Contact Info</th>
               <th className="px-6 py-4 text-[11px] font-bold text-zinc-500 uppercase tracking-wider">Schedule</th>
-              <th className="px-6 py-4 text-[11px] font-bold text-zinc-500 uppercase tracking-wider">Status</th>
+              {/* WOZ FIX: Renamed column to Document Status */}
+              <th className="px-6 py-4 text-[11px] font-bold text-zinc-500 uppercase tracking-wider">Document Status</th>
               <th className="px-6 py-4 text-[11px] font-bold text-zinc-500 uppercase tracking-wider text-right">Actions</th>
             </tr>
           </thead>
@@ -83,14 +101,40 @@ export default function LeadsTable({ leads, onViewLead }: LeadsTableProps) {
                   </div>
                 </td>
 
-                {/* Status Column */}
+                {/* WOZ FIX: Pure Document Status Logic */}
                 <td className="px-6 py-4">
-                  <div className="space-y-1.5">
-                    <LeadStatusBadge status={lead.status} />
+                  <div className="space-y-2">
+                    {(() => {
+                      // TypeScript string override to prevent strict union overlap errors
+                      const cs = String(lead.contractStatus || '').trim();
+                      
+                      if (cs === '' || cs === 'None' || cs === 'undefined') {
+                        return (
+                          <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-zinc-100 text-zinc-500 text-[10px] font-bold uppercase tracking-wider">
+                            <Icons.FileQuestion size={12} /> No Contract
+                          </div>
+                        );
+                      }
+                      
+                      if (cs === 'Completed' || cs === 'Completed - Hardcopy' || cs === 'Signed') {
+                        return (
+                          <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-emerald-100 text-emerald-700 text-[10px] font-bold uppercase tracking-wider">
+                            <Icons.ShieldCheck size={12} /> {cs === 'Completed - Hardcopy' ? 'Signed (Paper)' : 'Signed (Digital)'}
+                          </div>
+                        );
+                      }
+
+                      // Default fallback for 'Draft', 'Sent', etc.
+                      return (
+                        <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-blue-100 text-blue-700 text-[10px] font-bold uppercase tracking-wider">
+                          <Icons.Clock size={12} /> Pending Signature
+                        </div>
+                      );
+                    })()}
                     
-                    {/* Explicitly show enrollment payment status if applicable */}
+                    {/* Enrollment Payment Status (Kept for financial tracking) */}
                     {lead.type === 'enrollment' && (
-                      <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider">
+                      <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider mt-1">
                         <span className={`px-2 py-0.5 rounded-md ${
                           lead.paymentStatus === 'Paid' 
                             ? 'bg-emerald-100 text-emerald-700' 

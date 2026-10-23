@@ -1,20 +1,20 @@
+// FILE: src/components/admin/leads/LeadsFilterBar.tsx
 "use client";
 
 import React, { useState } from 'react';
 import * as Icons from 'lucide-react';
-import { FilterType, StatusFilter, DatePreset, DateTarget } from './types';
-
-// FILE: src/components/admin/leads/LeadsFilterBar.tsx
+import { FilterType, DatePreset, DateTarget } from './types';
 
 interface LeadsFilterBarProps {
   searchQuery: string;
   onSearchChange: (q: string) => void;
   typeFilter: FilterType;
   onTypeFilterChange: (t: FilterType) => void;
-  statusFilter: StatusFilter;
-  onStatusFilterChange: (s: StatusFilter) => void;
-  contractFilter?: 'all' | 'Signed' | 'Pending';
-  onContractFilterChange?: (c: 'all' | 'Signed' | 'Pending') => void;
+  
+  // WOZ UPGRADE: Updated Contract Filter interface
+  contractFilter: 'all' | 'signed' | 'unsigned' | 'none';
+  onContractFilterChange: (c: 'all' | 'signed' | 'unsigned' | 'none') => void;
+  
   datePreset: DatePreset;
   onDatePresetChange: (p: DatePreset) => void;
   dateTarget: DateTarget;
@@ -36,9 +36,7 @@ export default function LeadsFilterBar({
   onSearchChange,
   typeFilter,
   onTypeFilterChange,
-  statusFilter,
-  onStatusFilterChange,
-  contractFilter = 'all',
+  contractFilter,
   onContractFilterChange,
   datePreset,
   onDatePresetChange,
@@ -67,13 +65,11 @@ export default function LeadsFilterBar({
     { id: 'custom', label: 'Custom Range' },
   ];
 
-  const STATUS_LIST: StatusFilter[] = [
-    'all',
-    'Pending',
-    'Confirmed',
-    'Registered',
-    'Completed',
-    'Cancelled'
+  const CONTRACT_FILTERS: { id: 'all' | 'signed' | 'unsigned' | 'none'; label: string }[] = [
+    { id: 'all', label: 'All Leads' },
+    { id: 'signed', label: 'Signed' },
+    { id: 'unsigned', label: 'Pending Signature' },
+    { id: 'none', label: 'No Contract' }
   ];
 
   return (
@@ -129,7 +125,7 @@ export default function LeadsFilterBar({
 
       </div>
 
-      {/* Row 2: Date Filter Engine & Status Badges */}
+      {/* Row 2: Date Filter Engine & Contract Filters */}
       <div className="pt-3 border-t border-zinc-100 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
         
         {/* Date Filter Controls */}
@@ -140,7 +136,6 @@ export default function LeadsFilterBar({
             Date:
           </div>
 
-          {/* Date Presets Pills */}
           <div className="flex flex-wrap items-center gap-1">
             {DATE_PRESETS.map((dp) => (
               <button
@@ -160,25 +155,21 @@ export default function LeadsFilterBar({
             ))}
           </div>
 
-          {/* Date Scope Toggle (Scheduled Date vs Captured Date) */}
           <div className="flex items-center bg-zinc-100 p-0.5 rounded-lg ml-1">
             <button
               onClick={() => onDateTargetChange('scheduled')}
               className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase transition-all ${dateTarget === 'scheduled' ? 'bg-white text-zinc-900 shadow-2xs' : 'text-zinc-500 hover:text-zinc-800'}`}
-              title="Filter by appointment/class scheduled event date"
             >
               Event Date
             </button>
             <button
               onClick={() => onDateTargetChange('created')}
               className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase transition-all ${dateTarget === 'created' ? 'bg-white text-zinc-900 shadow-2xs' : 'text-zinc-500 hover:text-zinc-800'}`}
-              title="Filter by submission timestamp"
             >
               Captured
             </button>
           </div>
 
-          {/* Toggle Custom Date Inputs button */}
           <button
             onClick={() => setShowDatePicker(!showDatePicker)}
             className={`p-1 rounded-lg border text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100 transition-colors ${showDatePicker ? 'bg-zinc-100 border-zinc-300' : 'border-zinc-200'}`}
@@ -188,52 +179,30 @@ export default function LeadsFilterBar({
           </button>
         </div>
 
-        {/* Status & Contract Filter Pills */}
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex flex-wrap items-center gap-1.5">
-            <span className="text-zinc-400 font-semibold uppercase text-[10px] tracking-wider mr-1">
-              Status:
-            </span>
-            {STATUS_LIST.map((st) => (
-              <button
-                key={st}
-                onClick={() => onStatusFilterChange(st)}
-                className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${
-                  statusFilter === st 
-                    ? 'bg-emerald-600 text-white font-bold' 
-                    : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200'
-                }`}
-              >
-                {st === 'all' ? 'All' : st}
-              </button>
-            ))}
-          </div>
-
-          {onContractFilterChange && (
-            <div className="flex items-center gap-1.5 border-l border-zinc-200 pl-3">
-              <span className="text-zinc-400 font-semibold uppercase text-[10px] tracking-wider mr-1">
-                Contract:
-              </span>
-              {(['all', 'Signed', 'Pending'] as const).map((cf) => (
-                <button
-                  key={cf}
-                  onClick={() => onContractFilterChange(cf)}
-                  className={`px-2 py-0.5 rounded-lg text-[11px] font-bold transition-all ${
-                    contractFilter === cf
-                      ? 'bg-zinc-900 text-white'
-                      : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200'
-                  }`}
-                >
-                  {cf === 'all' ? 'All' : cf === 'Signed' ? 'Signed Only' : 'Pending'}
-                </button>
-              ))}
-            </div>
-          )}
+        {/* Contract Filter Pills (Replaces old Pipeline Status) */}
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="text-zinc-400 font-semibold uppercase text-[10px] tracking-wider mr-1 flex items-center gap-1">
+            <Icons.FileSignature size={13} />
+            Contract:
+          </span>
+          {CONTRACT_FILTERS.map((cf) => (
+            <button
+              key={cf.id}
+              onClick={() => onContractFilterChange(cf.id)}
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all ${
+                contractFilter === cf.id
+                  ? 'bg-indigo-600 text-white shadow-2xs'
+                  : 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100'
+              }`}
+            >
+              {cf.label}
+            </button>
+          ))}
         </div>
 
       </div>
 
-      {/* Row 3: Custom Date Range Pickers (Collapsible or when custom preset is selected) */}
+      {/* Row 3: Custom Date Range Pickers */}
       {(showDatePicker || datePreset === 'custom') && (
         <div className="p-3 bg-zinc-50 rounded-xl border border-zinc-200/80 flex flex-wrap items-center gap-3 animate-in fade-in duration-150">
           <div className="flex items-center gap-2">
@@ -293,7 +262,7 @@ export default function LeadsFilterBar({
         {hasActiveFilters && (
           <button
             onClick={onResetFilters}
-            className="text-xs font-bold text-red-600 hover:text-red-800 flex items-center gap-1 transition-colors"
+            className="text-xs font-bold text-red-600 hover:text-red-800 flex items-center gap-1 transition-colors cursor-pointer"
           >
             <Icons.RotateCcw size={12} />
             Reset All Filters
