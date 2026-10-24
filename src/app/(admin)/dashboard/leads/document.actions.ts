@@ -121,3 +121,97 @@ export async function deleteDocumentAction(documentId: string) {
     return { success: false, error: error.message };
   }
 }
+async function dispatchToMacrobiz(leadId: string, docId: string) {
+  try {
+    // 1. Check if Macrobiz is active
+    const mbzCheck = await sql`
+      SELECT is_active, credentials 
+      FROM platform_integrations 
+      WHERE provider = 'macrobiz' LIMIT 1
+    `;
+    
+    const config = mbzCheck[0];
+    if (!config || !config.is_active || !config.credentials?.apiKey) return;
+
+    const { apiKey } = config.credentials;
+
+    // 2. Fetch Lead & Document Data
+    let leadData;
+    // Assuming 'appointments' is the primary leads table based on your generateDocumentAction
+    const apptCheck = await sql`SELECT client_first_name as first, client_last_name as last, client_email as email, client_phone as phone FROM appointments WHERE id::text = ${leadId}`;
+    
+    if (apptCheck.length > 0) {
+      leadData = apptCheck[0];
+    } else {
+      const classCheck = await sql`SELECT student_first_name as first, student_last_name as last, student_email as email, student_phone as phone FROM class_enrollments WHERE id::text = ${leadId}`;
+      leadData = classCheck[0];
+    }
+
+    const docData = await sql`SELECT document_json FROM lead_documents WHERE id = ${docId}`;
+    if (!leadData || !docData.length) return;
+    
+    const docSchema = docData[0].document_json || {};
+    
+    // Look for standard pricing fields in your JSON template variables
+    const amount = Number(docSchema['{{contractPrice}}'] || docSchema['contractPrice'] || 0);
+
+    // 3. Construct Payload
+    const payload = {
+      customer: {
+        name: `${leadData.first} ${leadData.last}`.trim(),
+        email: leadData.email,
+        phone: leadData.phone
+      },
+      invoice: {
+        amount: amount,
+        description: `Contract ID: ${docId.split('-')[0].toUpperCase()} (Auto-Staged)`
+      }
+    };
+
+    // 4. Fire Webhook
+    const macrobizUrl = process.env.NODE_ENV === 'development' 
+      ? 'http://localhost:3000/api/v1/invoices/external'
+      : 'https://your-macrobiz-domain.com/api/v1/invoices/external'; // <-- Update this before Vercel deploy!
+
+    const response = await fetch(macrobizUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      console.error("[Macrobiz Integration Failed]:", await response.text());
+    } else {
+      console.log("[Macrobiz Integration Success]: Deal staged in Macrobiz Inbox!");
+    }
+  } catch (error) {
+    console.error("[Macrobiz Integration Error]:", error);
+  }
+}
+
+// ====================================================================================
+// STATUS UPDATE ACTION (Fires the webhook on completion)
+// ====================================================================================
+export async function updateDocumentStatusAction(leadId: string, docId: string, newStatus: string) {
+  try {
+    // 1. Update Database
+    await sql`
+      UPDATE lead_documents 
+      SET status = ${newStatus}, updated_at = NOW() 
+      WHERE id = ${docId} AND lead_id = ${leadId}
+    `;
+
+    // 2. Fire the Macrobiz trigger silently in the background
+    if (newStatus === 'Completed (E-Signed)' || newStatus === 'Completed') {
+      dispatchToMacrobiz(leadId, docId).catch(console.error);
+    }
+
+    revalidatePath(`/dashboard/leads/${leadId}`);
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}

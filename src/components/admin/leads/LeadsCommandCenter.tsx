@@ -33,13 +33,16 @@ export default function LeadsCommandCenter({ initialLeads }: LeadsCommandCenterP
   const [selectedLead, setSelectedLead] = useState<UnifiedLead | null>(null);
 
   // Synchronize selectedLead in real-time when initialLeads update
+  // WOZ FIX: Strict guard prevents accidental modal closure during fast Next.js re-renders
   useEffect(() => {
-    setSelectedLead(prev => {
-      if (!prev) return null;
-      const updated = initialLeads.find(l => l.id === prev.id);
-      return updated ?? prev;
-    });
-  }, [initialLeads]);
+    if (selectedLead) {
+      const updatedLead = initialLeads.find(l => l.id === selectedLead.id);
+      // Only update if we found newer data for the exact same lead
+      if (updatedLead && JSON.stringify(updatedLead) !== JSON.stringify(selectedLead)) {
+        setSelectedLead(updatedLead);
+      }
+    }
+  }, [initialLeads, selectedLead]);
 
   // Filter and Search Pipeline
   const filteredLeads = useMemo(() => {
@@ -64,7 +67,7 @@ export default function LeadsCommandCenter({ initialLeads }: LeadsCommandCenterP
         return false;
       }
 
-      // 2. Intelligent Contract Filter (WOZ FIX: Bulletproof String override for TypeScript)
+      // 2. Intelligent Contract Filter (Bulletproof String override for TypeScript)
       if (contractFilter !== 'all') {
         // By wrapping in String(), we force TS to evaluate it as a string, ignoring strict type overlaps
         const cs = String(lead.contractStatus || '').trim();
@@ -112,7 +115,7 @@ export default function LeadsCommandCenter({ initialLeads }: LeadsCommandCenterP
         const matchesCompany = (lead.companyName || '').toLowerCase().includes(q);
         const matchesCode = (lead.contractAccessCode || '').toLowerCase().includes(q);
         
-        // WOZ FIX: String override for search
+        // String override for search
         const matchesContractStatus = String(lead.contractStatus || '').toLowerCase().includes(q);
         
         let matchesAnswers = false;
@@ -210,7 +213,7 @@ export default function LeadsCommandCenter({ initialLeads }: LeadsCommandCenterP
       `"${l.date}"`,
       `"${l.time}"`,
       `"${l.paymentStatus || 'N/A'}"`,
-      `"${String(l.contractStatus || 'Draft')}"`, // WOZ FIX: String override for CSV
+      `"${String(l.contractStatus || 'Draft')}"`,
       `"${l.contractAccessCode || ''}"`,
       `"${l.contractCost || 0}"`,
       `"${l.contractCurrency || 'PHP'}"`,
@@ -251,7 +254,7 @@ export default function LeadsCommandCenter({ initialLeads }: LeadsCommandCenterP
         <div className="flex items-center gap-2.5">
           <button
             onClick={() => router.refresh()}
-            className="p-2.5 bg-white border border-zinc-200 hover:bg-zinc-50 text-zinc-700 rounded-xl transition-colors shadow-xs"
+            className="p-2.5 bg-white border border-zinc-200 hover:bg-zinc-50 text-zinc-700 rounded-xl transition-colors shadow-xs cursor-pointer"
             title="Refresh Leads"
           >
             <Icons.RefreshCw size={16} />
@@ -260,7 +263,7 @@ export default function LeadsCommandCenter({ initialLeads }: LeadsCommandCenterP
           <button
             onClick={handleExportCSV}
             disabled={filteredLeads.length === 0}
-            className="inline-flex items-center gap-2 px-4 py-2.5 bg-white border border-zinc-200 hover:bg-zinc-50 text-zinc-800 rounded-xl text-xs font-bold transition-colors shadow-xs disabled:opacity-50"
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-white border border-zinc-200 hover:bg-zinc-50 text-zinc-800 rounded-xl text-xs font-bold transition-colors shadow-xs disabled:opacity-50 cursor-pointer"
           >
             <Icons.Download size={14} className="text-zinc-500" />
             Export CSV ({filteredLeads.length})
