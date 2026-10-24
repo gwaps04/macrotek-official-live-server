@@ -61,7 +61,7 @@ async function dispatchToMacrobizFromEditor(docId: string) {
     // 5. Fire Webhook
     const macrobizUrl = process.env.NODE_ENV === 'development' 
       ? 'http://localhost:3000/api/v1/invoices/external'
-      : 'https://your-macrobiz-domain.com/api/v1/invoices/external';
+      : 'https://mds-bookkeeping.vercel.app/api/v1/invoices/external';
 
     const response = await fetch(macrobizUrl, {
       method: 'POST',
@@ -71,7 +71,6 @@ async function dispatchToMacrobizFromEditor(docId: string) {
       },
       body: JSON.stringify(payload)
     });
-
     if (!response.ok) {
       console.error("[Macrobiz Editor Integration Failed]:", await response.text());
     } else {

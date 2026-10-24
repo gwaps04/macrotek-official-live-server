@@ -169,9 +169,10 @@ async function dispatchToMacrobiz(leadId: string, docId: string) {
     };
 
     // 4. Fire Webhook
+    // 4. Fire Webhook (WOZ FIX: Updated with live Macrobiz Vercel URL)
     const macrobizUrl = process.env.NODE_ENV === 'development' 
       ? 'http://localhost:3000/api/v1/invoices/external'
-      : 'https://your-macrobiz-domain.com/api/v1/invoices/external'; // <-- Update this before Vercel deploy!
+      : 'https://mds-bookkeeping.vercel.app/api/v1/invoices/external';
 
     const response = await fetch(macrobizUrl, {
       method: 'POST',
@@ -181,7 +182,6 @@ async function dispatchToMacrobiz(leadId: string, docId: string) {
       },
       body: JSON.stringify(payload)
     });
-
     if (!response.ok) {
       console.error("[Macrobiz Integration Failed]:", await response.text());
     } else {
